@@ -1,0 +1,11 @@
+# BASH: conda env create
+# source activate phd
+dependencies:
+ - python=3.8
+ - numpy
+ - scipy
+ - scikit-learn
+ - jupyter 
+ - notebook 
+ - pandas 
+ - seaborn
