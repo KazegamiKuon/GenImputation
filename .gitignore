@@ -1,0 +1,8 @@
+#Folder ignore
+.vscode
+data/.vscode
+data/**/*.gz
+data/**/*.rar
+data/**/*.csv
+data/zarr
+git-actions-practice
