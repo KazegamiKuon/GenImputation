@@ -1,2 +1,4 @@
-env_name=${PWD##*/}
-conda remove -n $env_name --all
+dirname=$(pwd)
+result="${dirname%"${dirname##*[!/]}"}" # extglob-free multi-trailing-/ trim
+result="${result##*/}"                  # remove everything before the last /
+conda env remove -n ${result}
