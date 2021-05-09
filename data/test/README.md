@@ -25,15 +25,14 @@ test                        - this folder, any test data must be here
 
 ```tree
 test
-├── README.md
-├── chr22_gtruth.log                - process log.
-├── chr22_gtruth.recode.vcf         - ground truth for imputing. See below.
-├── chr22_input.log                 - process log.
-├── chr22_input.recode.vcf          - input for model. See below.
-├── chr22_predict.dose.vcf.gz       - predicted by minimac4. See at description below.
-├── chr22_predict.dose.vcf.gz.csi   - created by bcftools. See at description below.
-├── chr22_predict.info              - created when predict "chr22_predict.dose.vcf.gz".
-└── chr22_predict.logfile           - created when predict "chr22_predict.dose.vcf.gz".
+├── G1K_chr22_biallelic_gtruth.log              - ground truth for imputing. See below.
+├── G1K_chr22_biallelic_gtruth.recode.vcf.gz
+├── G1K_chr22_biallelic_input.log               - input for model. See below.
+├── G1K_chr22_biallelic_input.recode.vcf.gz
+├── G1K_chr22_biallelic_predict.dose.vcf.gz     - predicted by minimac4. See at description below.
+├── G1K_chr22_biallelic_predict.info            - created when predict
+├── G1K_chr22_biallelic_predict.logfile         - created when predict
+└── README.md
 ```
 
 ## Description
@@ -53,14 +52,8 @@ vcftools --gzvcf ./data/interim/G1K_chr22_biallelic.vcf.gz --keep ./data/externa
 gzip ./data/test/G1K_chr22_biallelic_input.recode.vcf
 ```
 
-**chr22_predict.dose.vcf.gz** file was created by this script at this folder:
+**G1K_chr22_biallelic_predict.dose.vcf.gz** file was created by this script at this folder:
 
 ```script
-minimac4 --refHaps ../train/chr22.recode.m3vcf.gz --haps chr22_input.recode.vcf --allTypedSites --log --cpus 4 --prefix chr22_predict
-```
-
-**chr22_predict.dose.vcf.gz.csi** file was created by this script at this folder:
-
-```script
-bcftools index chr22_predict.dose.vcf.gz
+minimac4 --refHaps ../train/G1K_chr22_biallelic_train.recode.m3vcf.gz --haps G1K_chr22_biallelic_input.recode.vcf.gz --allTypedSites --log --cpus 4 --prefix G1K_chr22_biallelic_predict
 ```
