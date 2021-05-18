@@ -6,4 +6,9 @@ data/**/*.rar
 data/**/*.csv
 data/**/*.info
 data/zarr
-git-actions-practice
+git-actions-practice/
+genhelper/
+__pycache__/
+samtools*/
+htslib*/
+bcftools*/
