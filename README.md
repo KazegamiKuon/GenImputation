@@ -70,7 +70,7 @@ When you done all your feature and wanna commit to dev, then easy do it at githu
 
 ## Install/Uninstall your environment
 
-I was make file bash for easy do it
+I make file bash for easy do it
 
 For install environment, run **automatically_initialize_environment.sh** file. Your environment name will same as your folder repository
 
@@ -88,6 +88,28 @@ Get git actions bash to automatic
 
 ```script
 git clone https://github.com/KazegamiKuon/git-actions-practice.git
+```
+
+Activate environment and setup required [samtools](http://www.htslib.org/download/). Download **htslib**, **samtools** and **bcftools**.Unless have it, then run script below to setup.
+
+```script
+tar xjf htslib-1.12.tar.bz2
+cd ./htslib-1.12/
+sudo bash ./configure
+make
+sudo make install
+cd ../
+tar xif samtools-1.12.tar.bz2
+cd ./samtools-1.12/
+sudo bash ./configure
+make
+sudo make install
+cd ../
+tar xif bcftools-1.12.tar.bz2
+cd bcftools-1.12/
+sudo bash ./configure
+make
+sudo make install
 ```
 
 ## (coming soon)

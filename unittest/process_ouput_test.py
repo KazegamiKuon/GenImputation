@@ -1,0 +1,66 @@
+import sys
+import pandas as pd
+from lib.utils import general as g
+import os
+import unittest
+import numpy as np
+from lib.data_loader import process_ouput as po
+
+class ProcessOutputTest(unittest.TestCase):
+
+    def test_plot_r2_by_maf(self):
+        #params
+        concat_datafame_params ={
+            'header':None,
+            'sep':' '
+        }
+        group_file_key = lambda x: x.split('_')[:-2]
+        group_key_index = 0
+        key_cols=[0,1,2,3,4]
+        key_col_name = 'KEY'
+        # get group data
+        # predict
+        group_list = g.get_group_file('/home/cuong/VBDI/HungProject/GenImputation/data/test/higher_model_result',key = group_file_key)
+        group_predict_data = {}
+        for k, paths in group_list[0]:
+            key = ''.join(k)
+            temp = list(paths)
+            group_predict_data[key] = g.concat_dataframe(temp,**concat_datafame_params)
+        # paper predict
+        group_list = g.get_group_file('/home/cuong/VBDI/HungProject/GenImputation/data/test/paper_hybrid_result',key = group_file_key)
+        group_paper_data = {}
+        for k, paths in group_list[0]:
+            key = ''.join(k)
+            group_paper_data[key] = g.concat_dataframe(list(paths),**concat_datafame_params)
+        # groud truth
+        group_list = g.get_group_file('/home/cuong/VBDI/HungProject/GenImputation/data/test/gt_chr22_1_5',key = group_file_key)
+        group_gtruth_data = {}
+        for k, paths in group_list[0]:
+            key = ''.join(k)
+            group_gtruth_data[key] = g.concat_dataframe(list(paths),**concat_datafame_params)
+
+        # get data predict
+        keys = list(group_predict_data.keys())
+        predict_data = group_predict_data[keys[group_key_index]]
+        predict_data_keys = predict_data[key_cols].apply(lambda row: '_'.join(row.values.astype(str)), axis=1)
+
+        # get data predict
+        keys = list(group_paper_data.keys())
+        paper_data = group_paper_data[keys[group_key_index]]
+        predict_paper_keys = paper_data[key_cols].apply(lambda row: '_'.join(row.values.astype(str)), axis=1)
+
+        # get data gt
+        keys = list(group_gtruth_data.keys())
+        gtruth_data = group_gtruth_data[keys[group_key_index]]
+        gtruth_data_keys = gtruth_data[key_cols].apply(lambda row: '_'.join(row.values.astype(str)), axis=1)
+
+        assert np.all(predict_data_keys == gtruth_data_keys), 'not same key'
+        y_paper_pred = paper_data.values[:,6:]
+        y_me_pred = predict_data.values[:,5:]
+        mafs = gtruth_data.values[:,5]
+        y_true = gtruth_data.values[:,6:]
+        labels, r2_dict = po.plot_r2_by_maf(mafs,y_true,{'paper':y_paper_pred,'own':y_me_pred})
+        print('')
+
+if __name__ == '__main__':
+    unittest.main()

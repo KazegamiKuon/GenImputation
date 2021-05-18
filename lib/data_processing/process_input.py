@@ -1,0 +1,288 @@
+# source ./script/test_data_preparation.py from https://github.com/kanamekojima/rnnimp
+
+from contextlib import contextmanager
+from argparse import ArgumentParser
+import os
+import sys
+import re
+from tqdm import tqdm
+from ..utils import general as g
+
+def complement_base(base):
+    if base == 'A':
+        return 'T'
+    if base == 'T':
+        return 'A'
+    if base == 'G':
+        return 'C'
+    if base == 'C':
+        return 'G'
+    return 'N'
+
+def get_sequence(region, hg_fasta_file):
+    command = 'samtools faidx {:s} {:s}'.format(hg_fasta_file, region)
+    lines = g.system_with_stdout(command)
+    sequence = ''.join(lines[1:])
+    return sequence
+
+
+def align(ref_seq, seq):
+    for i in range(len(ref_seq) - len(seq)):
+        mismatch_flag = False
+        for j in range(len(seq)):
+            if ref_seq[i + j] != seq[j]:
+                mismatch_flag = True
+                break
+        if not mismatch_flag:
+            return i
+    return -1
+
+def parse_manifest(manifest_file, chr_num, hg_fasta_file):
+    marker_dict = {}
+    with g.reading(manifest_file) as fp:
+        for line in fp:
+            if line.startswith('[Assay]'):
+                break
+        items = fp.readline().strip().split(',')
+        IlmnStrand_col = items.index('IlmnStrand')
+        Chr_col = items.index('Chr')
+        MapInfo_col = items.index('MapInfo')
+        SNP_col = items.index('SNP')
+        SourceStrand_col = items.index('SourceStrand')
+        SourceSeq_col = items.index('SourceSeq')
+        RefStrand_col = items.index('RefStrand')
+        for line in tqdm(fp,desc='create marker from OMNI'):
+            if line.startswith('[Controls]'):
+                break
+            items = line.strip().split(',')
+            if items[Chr_col] != chr_num:
+                continue
+            position = items[MapInfo_col]
+            alleles = items[SNP_col][1:-1].split('/')
+            if alleles[0] == 'I' or alleles[0] == 'D':
+                source_seq = items[SourceSeq_col]
+                upstream_seq, a0, a1, downstream_seq = re.split(
+                    '[\[\/\]]', source_seq)
+                upstream_seq = upstream_seq.upper()
+                downstream_seq = downstream_seq.upper()
+                if a0 == '-':
+                    a0 = ''
+                if a1 == '-':
+                    a1 = ''
+                a0_seq = upstream_seq + a0 + downstream_seq
+                a1_seq = upstream_seq + a1 + downstream_seq
+                margin = 10
+                region_start = int(position) - len(upstream_seq) - margin
+                region_end = region_start + margin \
+                             + max(len(a0_seq), len(a1_seq)) + margin
+                region = 'chr{:s}:{:d}-{:d}'.format(
+                    chr_num, region_start, region_end)
+                ref_seq = get_sequence(region, hg_fasta_file)
+                a0_align = align(ref_seq, a0_seq)
+                a1_align = align(ref_seq, a1_seq)
+                indel_position = max(a0_align, a1_align) + len(upstream_seq) \
+                                 + region_start - 1
+                alleles[0] = upstream_seq[-1] + a0
+                alleles[1] = upstream_seq[-1] + a1
+                position = str(indel_position)
+            else:
+                if items[RefStrand_col] == '-':
+                    alleles[0] = complement_base(alleles[0])
+                    alleles[1] = complement_base(alleles[1])
+            if position not in marker_dict:
+                marker_dict[position] = []
+            marker_dict[position].append(alleles)
+    return marker_dict
+
+def set_marker_flags(legend_file, marker_dict, output_file):
+    g.mkdir(os.path.dirname(output_file))
+    with g.reading(legend_file) as fp, \
+         g.writing(output_file) as w_fp:
+        w_fp.write(fp.readline().rstrip() + ' array_marker_flag\n')
+        for line in tqdm(fp,desc='set marker flags'):
+            items = line.rstrip().split()
+            position = items[1]
+            flag = '0'
+            if position in marker_dict:
+                a0 = items[2]
+                a1 = items[3]
+                for alleles in marker_dict[position]:
+                    if alleles[0] == a0 and alleles[1] == a1:
+                        flag = '1'
+                        break
+                    if alleles[1] == a0 and alleles[0] == a1:
+                        flag = '1'
+                        break
+            w_fp.write('{:s} {:s}\n'.format(line.rstrip(), flag))
+
+def vcf2haplegend(vcf_file, keep_sample_list, output_prefix):
+    def is_missing_genotype(genotype):
+        if genotype == '.':
+            return True
+        if genotype == './.':
+            return True
+        if genotype == '.|.':
+            return True
+        return False
+
+    g.mkdir(os.path.dirname(output_prefix))
+    with g.reading(vcf_file) as fp:
+        for line in fp:
+            if line.startswith('#CHROM'):
+                samples = line.rstrip().split()[9:]
+                if keep_sample_list is None:
+                    keep_sample_id_list = list(range(len(samples)))
+                else:
+                    keep_sample_id_list = [
+                        samples.index(sample) for sample in keep_sample_list
+                        if sample in samples
+                    ]
+                with open(output_prefix + '.sample', 'wt') as s_fp:
+                    s_fp.write('ID_1 ID_2 missing\n')
+                    s_fp.write('0 0 0\n')
+                    for sample_id in keep_sample_id_list:
+                        s_fp.write(
+                            '{0:s} {0:s} 0\n'.format(samples[sample_id]))
+                break
+        sample_size = len(keep_sample_id_list)
+        with g.writing(output_prefix + '.hap.gz') as h_fp, \
+             g.writing(output_prefix + '.legend.gz') as l_fp:
+            l_fp.write('id position ref alt af maf\n')
+            allele_id_list = [None] * (2 * sample_size)
+            # danh sách ALT ID
+            hap_record = [None] * (2 * sample_size)
+            # Haplotype record
+            for line in tqdm(fp,desc='vcf to haplegend'):
+                # đọc line và tách ra thành từng item
+                items = line.rstrip().split()
+                # Item đầu tiên là chrom
+                chrom = items[0]
+                # Item thứ 2 là position
+                position = items[1]
+                # Item thứ 3 là snp
+                snp = items[2]
+                # Item thứ 4 là REF
+                ref = items[3]
+                # Item thứ  5 là ALT
+                alts = items[4].split(',')
+                # get info data
+                info_dict = g.list_expression_to_dict(items[7].split(';'))
+                # Dữ liệu về genotypes từ index 9 đổ về sau
+                genotypes = items[9:]
+                # Loop qua danh sách sample và lấy dữ liệu allele_id của nó
+                for i, sample_id in enumerate(keep_sample_id_list):
+                    genotype = genotypes[sample_id]
+                    if is_missing_genotype(genotype):
+                        allele_id_list[2 * i] = None
+                        allele_id_list[2 * i + 1] = None
+                    else:
+                        allele_id_pair = map(int, genotype.split('|'))
+                    for j, allele_id in enumerate(allele_id_pair):
+                        allele_id_list[2 * i + j] = allele_id
+                for i, alt in enumerate(alts):
+                    # duyệt qua danh sách alt
+                    if alt == '.' or alt.startswith('<'):
+                        continue
+                    alt_allele_id = i + 1
+                    # duyệt qua danh sách allele của các sample
+                    for j, allele_id in enumerate(allele_id_list):
+                        if allele_id is None:
+                            # nếu allete_id ko tồn tại
+                            hap_record[j] = '?'
+                        elif allele_id == alt_allele_id:
+                            # giống với alt thì là 1
+                            hap_record[j] = '1'
+                        else:
+                            # khác alt thì là 0
+                            hap_record[j] = '0'
+                    h_fp.write(' '.join(hap_record))
+                    h_fp.write('\n')
+                    snp_id = snp
+                    if snp_id == '.':
+                        snp_id = '{:s}:{:s}:{:s}:{:s}'.format(
+                            chrom, position, ref, alt)
+                    elif len(alts) >= 2:
+                        snp_id += ':{:s}:{:s}'.format(ref, alt)
+                    # convert to float AF and calculate MAF
+                    af = float(info_dict['AF'][i])
+                    maf = af if af <= 0.5 else 1 - af
+                    # convert to str
+                    af = str(af)
+                    maf = str(maf)
+                    # write line
+                    l_fp.write('{:s} {:s} {:s} {:s} {:s} {:s}\n'.format(
+                        snp_id, position, ref, alt, af, maf))
+
+def prepare_test_hap(hap_file, legend_file, output_prefix):
+    array_marker_flag_list = []
+    with g.reading(legend_file) as fp, \
+         g.writing(output_prefix + '.legend.gz') as w_fp:
+        line = fp.readline()
+        items = line.rstrip().split()
+        try:
+            array_marker_flag_col = items.index('array_marker_flag')
+        except ValueError:
+            g.print_error()
+            g.print_error('Error: Header "array_marker_flag" not found in '
+                        + legend_file)
+            g.print_error()
+            sys.exit(0)
+        w_fp.write(line)
+        for line in tqdm(fp,desc='prepare marker to legend'):
+            items = line.rstrip().split()
+            array_marker_flag = items[array_marker_flag_col] == '1'
+            array_marker_flag_list.append(array_marker_flag)
+            if array_marker_flag:
+                w_fp.write(line)
+    with g.reading(hap_file) as fp, \
+         g.writing(output_prefix + '.hap.gz') as w_fp:
+        for i, line in enumerate(tqdm(fp,desc='prepare marker to hap')):
+            if array_marker_flag_list[i]:
+                w_fp.write(line)
+
+def process_data(hap_prefix,true_hap_prefix,vcf_file,manifest_file,hg_fasta_file,test_sample_list_file=None):
+    g.check_required_software('samtools')
+    g.check_required_file(vcf_file)
+    g.check_required_file(manifest_file)
+    g.check_required_file(hg_fasta_file)
+
+    keep_sample_list = []
+    try:
+        with open(test_sample_list_file) as fp:
+            for line in fp:
+                keep_sample_list.append(line.rstrip())
+    except:
+        keep_sample_list = None
+    vcf2haplegend(vcf_file, keep_sample_list, true_hap_prefix)
+    marker_dict = parse_manifest(manifest_file, '22', hg_fasta_file)
+    set_marker_flags(
+        true_hap_prefix + '.legend.gz', marker_dict,
+        true_hap_prefix + '.omni.legend.gz')
+    prepare_test_hap(
+        true_hap_prefix + '.hap.gz', true_hap_prefix + '.omni.legend.gz',
+        hap_prefix)
+
+if __name__ == '__main__':
+    description = 'imputation'
+    parser = ArgumentParser(description=description, add_help=False)
+    parser.add_argument('--vcf', type=str, required=True,
+                        dest='vcf_file', help='File vcf of data')
+    parser.add_argument('--omni', type=str, required=True,
+                        dest='manifest_file', help='Omni file data')
+    parser.add_argument('--hgref', type=str, required=True,
+                        dest='hg_fasta_file', help='Genome Reference file')
+    parser.add_argument('--input_prefix', type=str, required=True,
+                        dest='hap_prefix', help='Input file prefix')
+    parser.add_argument('--gtrue_prefix', type=str, required=True,
+                        dest='true_hap_prefix', help='Output file prefix')
+    parser.add_argument('--test_sample', type=str, required=False, default=None,
+                        dest='test_sample_list_file', help='Sample will use for test. Each sample id on one line.')
+    args = parser.parse_args()
+
+    hap_prefix = args.hap_prefix
+    true_hap_prefix = args.true_hap_prefix
+    test_sample_list_file = args.test_sample_list_file
+    vcf_file = (args.vcf_file)
+    manifest_file = args.manifest_file
+    hg_fasta_file = args.hg_fasta_file
+    process_data(hap_prefix,true_hap_prefix,vcf_file,manifest_file,hg_fasta_file,test_sample_list_file=test_sample_list_file)
