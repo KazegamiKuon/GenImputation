@@ -4,6 +4,7 @@ import sys
 import gzip
 from itertools import groupby
 import pandas as pd
+import numpy as np
 import subprocess
 import shutil
 
@@ -100,6 +101,12 @@ def list_expression_to_dict(list_expressions):
         else:
             redict[key_values[0]] = key_values[1].split(',')
     return redict
+
+def list_to_dict(dlist: list,start_index=0):
+    return dict(zip(dlist,np.arange(start_index,start_index+len(dlist))))
+
+def line_to_items(line: str,split=' '):
+    return line.rstrip().split(split)
 
 def check_required_software(software_name):
     if os.path.exists(software_name):

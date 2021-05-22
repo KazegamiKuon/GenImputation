@@ -1,12 +1,23 @@
 import sys
 import pandas as pd
+from lib import data_processing
 from lib.utils import general as g
 import os
 import unittest
 import numpy as np
-from lib.data_loader import process_ouput as po
+from lib.data_processing import process_ouput as po
+from lib.data_processing import process_input as pi
+from lib.data_processing import process_vcf as pv
 
-class ProcessOutputTest(unittest.TestCase):
+class DataProcessingTest(unittest.TestCase):
+    def __init__(self, methodName: str) -> None:
+        super().__init__(methodName=methodName)
+        self.vcf_file = '/home/cuong/VBDI/HungProject/GenImputation/data/raw/G1K_chr22_hg38.vcf.gz'
+        self.manifest_file='/home/cuong/VBDI/HungProject/GenImputation/data/raw/infiniumomni2-5-8-v1-3-a2.csv.gz'
+        self.hg_fasta_file='/home/cuong/VBDI/HungProject/GenImputation/data/raw/hg38.fa.gz'
+        self.my_output_prefix = '/home/cuong/VBDI/HungProject/GenImputation/data/interim/G1K_chr22_hg38_manifest'
+        self.chroms=['22']
+        self.test_sample_list_file='/home/cuong/VBDI/HungProject/GenImputation/data/external/test_100_samples.txt'
 
     def test_plot_r2_by_maf(self):
         #params
@@ -61,6 +72,24 @@ class ProcessOutputTest(unittest.TestCase):
         y_true = gtruth_data.values[:,6:]
         labels, r2_dict = po.plot_r2_by_maf(mafs,y_true,{'paper':y_paper_pred,'own':y_me_pred})
         print('')
+
+    def test_edit_vcf(self):
+        pv.check_vcf('/home/cuong/VBDI/HungProject/GenImputation/data/raw/G1K_chr22_hs37d5.vcf.gz')
+
+    def test_vcf2legend(self):
+        pi.vcf2haplegend('/home/cuong/VBDI/HungProject/GenImputation/data/raw/G1K_chr22_hg38.vcf.gz',[],None)
+    
+    def test_process_data(self):
+        # --vcf /home/cuong/VBDI/HungProject/GenImputation/data/raw/G1K_chr22_hg38.vcf.gz
+        # --omni /home/cuong/VBDI/HungProject/GenImputation/data/raw/infiniumomni2-5-8-v1-3-a2.csv.gz
+        # --hgref /home/cuong/VBDI/HungProject/GenImputation/data/raw/hg38.fa.gz
+        # --input_prefix /home/cuong/VBDI/HungProject/GenImputation/data/interim/G1K_chr22_hg38_omni
+        # --gtrue_prefix /home/cuong/VBDI/HungProject/GenImputation/data/interim/G1K_chr22_hg38_omni_true
+        # --test_sample /home/cuong/VBDI/HungProject/GenImputation/data/external/test_100_samples.txt
+        pi.process_data(self.vcf_file,self.manifest_file,self.hg_fasta_file,self.chroms,self.my_output_prefix,self.my_output_prefix+'_true',self.test_sample_list_file)
+    
+    def test_genotyping_vcf(self):
+        pi.genotyping_vcf(self.vcf_file,self.manifest_file,self.hg_fasta_file,self.my_output_prefix,self.chroms)
 
 if __name__ == '__main__':
     unittest.main()

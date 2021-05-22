@@ -1,5 +1,7 @@
 #Folder ignore
 .vscode
+**.gz
+**.zip
 data/.vscode
 data/**/*.gz
 data/**/*.rar
@@ -12,3 +14,6 @@ __pycache__/
 samtools*/
 htslib*/
 bcftools*/
+#temp
+data/test/**/
+data/train/**/
