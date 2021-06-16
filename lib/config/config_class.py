@@ -1,5 +1,9 @@
+import os
+import json
 import numpy as np
+import pandas as pd
 from ..utils import general as g
+from multimethod import multimethod
 
 class ManiConfig():
     def __init__(self) -> None:
@@ -46,12 +50,32 @@ class VCFConfig():
 
 vcf_config = VCFConfig()
 
+class RegionConfig():
+    @multimethod
+    def __init__(self,num_inputs:int,fw:list,bw:list,config_json:str) -> None:
+        with g.reading(config_json) as default_config:
+            self.__dict__ = json.load(default_config)
+        self.num_inputs = num_inputs
+        self.output_points_bw = bw
+        self.output_points_fw = fw
+        self.num_outputs = len(bw)
+    @multimethod
+    def __init__(self,config_json:str) -> None:
+        with g.reading(config_json) as config:
+            self.__dict__ = json.load(config)
+    
+    def to_json(self,json_path):
+        with g.writing(json_path) as wjson:
+            json.dump(self.__dict__,wjson)
+
 class LegendConfig():
     def __init__(self) -> None:
         self.unobserve = '0'
         self.observe = '1'
         self.hap_tail = '.hap.gz'
+        self.gtrue_hap_tail = '_gtrue'+self.hap_tail
         self.legend_tail = '.legend.gz'
+        self.gtrue_legend_tail = '_gtrue'+self.legend_tail
         #legend
         self.snp = 'id'
         self.chrom = 'chr'
@@ -73,7 +97,10 @@ class LegendConfig():
         self.sample_split_params = ' '
         self.sample_missing = 'missing'
         self.sample_header = [self.sample_id_01,self.sample_id_02,self.sample_missing]
-    
+        # region
+        self.region_folder ='region'
+        # config
+        self.config_tail = '.config.json'
     @property
     def legend_header_line(self)->str:
         return self.legend_split_params.join(self.legend_header)
@@ -96,6 +123,7 @@ class LegendConfig():
         reDict[self.ref] = ref
         reDict[self.alt] = alt
         reDict[self.af] = af
+        reDict[self.maf] = str(1-float(af)) if float(af) > 0.5 else af
         reDict[self.array_marker_flag] = flag
         if reDict[self.snp] == '.':
             reDict[self.snp] = '{:s}:{:s}:{:s}:{:s}'.format(chrom, position, ref, alt)
@@ -121,5 +149,44 @@ class LegendConfig():
     def get_sample_value_line(self,sample_dict:dict)->str:
         values = list(map(sample_dict.get,self.sample_header))
         return self.sample_split_params.join(values)
+    
+    def get_dir_and_base_name(self,path:str)->str:
+        return os.path.dirname(path), os.path.basename(path)
+
+    def make_region_dir(self,file_path:str)->None:
+        dirname = os.path.dirname(file_path)
+        dirname = os.path.join(dirname,self.region_folder)
+        os.makedirs(dirname,exist_ok=True)
+
+    def get_legend_region_file_name(self,file_path:str,bin:int,nb_character:int)->str:        
+        dirname, basename = self.get_dir_and_base_name(file_path)        
+        region_tail = '_{:0'+str(nb_character)+'d}'+self.legend_tail
+        basename = basename.replace(self.legend_tail,region_tail.format(bin))
+        region_path = os.path.join(dirname,self.region_folder,basename)
+        return region_path
+
+    def get_hap_region_file_name(self,file_path:str,bin:int,nb_character:int)->str:
+        dirname, basename = self.get_dir_and_base_name(file_path)        
+        region_tail = '_{:0'+str(nb_character)+'d}'+self.hap_tail
+        basename = basename.replace(self.hap_tail,region_tail.format(bin))
+        region_path = os.path.join(dirname,self.region_folder,basename)
+        return region_path
+    
+    def get_legend_gtrue_file(self,legend_file:str)->str:
+        return legend_file.replace(self.legend_tail,self.gtrue_legend_tail)
+    
+    def get_hap_gtrue_file(self,hap_file:str)->str:
+        return hap_file.replace(self.hap_tail,self.gtrue_hap_tail)
+    
+    def legend_dataframe_to_csv(self,path,df:pd.DataFrame)->None:
+        df.to_csv(path,sep=self.legend_split_params,index=False)
+    
+    def legend_to_json_path(self,legend_path:str)->str:
+        return legend_path.replace(self.legend_tail,self.config_tail)
+
+    def to_region_config(self,num_inputs:int,fw:list,bw:list,legend_path:str,default_config_path:str):
+        json_path = self.legend_to_json_path(legend_path)
+        region_config = RegionConfig(num_inputs,fw,bw,default_config_path)
+        region_config.to_json(json_path)
 
 legend_config = LegendConfig()

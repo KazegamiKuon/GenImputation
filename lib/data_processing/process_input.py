@@ -3,13 +3,15 @@
 from argparse import ArgumentParser
 from io import TextIOWrapper
 import json
-from lib import config
 import os
+from posixpath import sep
 import sys
 import re
-from tqdm import tqdm
+import os
+from tqdm.notebook import tqdm
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 # from lib.utils import general as g
 # from lib.config.config_class import vcf_config, mani_config
 from ..utils import general as g
@@ -318,45 +320,187 @@ def get_inter_bin_width(df:pd.DataFrame,inter_bin_width_percen:float):
 def get_head_observe(old_df: pd.DataFrame,inter_bin_width_percen:float):
     return old_df.tail(get_inter_bin_width(old_df,inter_bin_width_percen))
 
-# def legend_to_region(legend_file,hap_file,number_bin,inter_bin_width_percen:float = 0,no_observation=False):
-#     legend_data = pd.read_csv(legend_file,sep=legend_config.legend_split_params)    
-#     nb_line = len(legend_data)
-#     bin_col = 'bin'    
-#     legend_data[bin_col] = pd.qcut(np.arange(nb_line),number_bin,labels=False)
-#     labels, nb_values = np.unique(legend_data[bin_col],return_counts=True)
-#     values,nb_bin = np.unique(nb_values,return_counts=True)
-#     print('Info about number variant and number bin each variant\n')
-#     print(pd.DataFrame({'nb variants':values,'nb bin':nb_bin}))
-#     print('Agree to div bin by this? [y/n]')
-#     check = input()
-#     if check.startswith('n') or check.startswith('N'):
-#         print('Stop process data.')
-#         return
-#     with g.reading(hap_file) as hap_file_stream:
-#         # label are sorted and orderly in data.
-#         # When we loop over label each line (exclude header) at legend file is map with line at hap file.
-#         for i, label in enumerate(tqdm(labels,desc='create region data from legend')):
-#             # get new data at this loop
-#             bin_data = legend_data[legend_data[bin_col] == label] # this bin data
-#             legend_region_file, legend_region_true_file = legend_config.get_hap_legend_region_file_name(legend_file,label)
-#             hap_region_file, hap_region_true_file = legend_config.get_hap_legend_region_file_name(hap_file,label)
-#             nb_bin_line = len(bin_data)
-#             # Ghi ra file hap
-#             with g.writing(hap_region_file) as hap_region_file_stream, \
-#                 g.writing(hap_region_true_file) as hap_region_true_file_stream:
-#                 for i in tqdm(range(nb_bin_line),desc='process region {:03d}'.format(label)):
-#                     line = hap_file_stream.readline()
-#                     # Nếu flag là observe thì ghi vô cả 2 file
-#                     flag = str(temp.iloc[i][legend_config.array_marker_flag])
-#                     if flag == legend_config.observe:
-#                         hap_region_file_stream.write(line)
-#                         if no_observation:
-#                             continue
-#                     hap_region_true_file_stream.write(line)
-#             if no_observation:
-#                 temp = temp[temp[legend_config.array_marker_flag] == int(legend_config.unobserve)]
-#             temp.to_csv(legend_region_true_file,sep = legend_config.legend_split_params)
+def get_nb_bins_each_nb_variants(variant_labels):
+    '''
+    return:
+        return dataframe contain data number bins with each number variants
+    '''
+    labels, nb_values = np.unique(variant_labels,return_counts=True)
+    values, nb_bins = np.unique(nb_values,return_counts=True)
+    return pd.DataFrame({'nb variants':values,'nb bin':nb_bins}), labels
 
+def alert_yes_no(header,contain,question):
+    print('{}\n'.format(header))
+    print(contain)
+    print('{} [y/n]'.format(question))
+    check = input()
+    return check.startswith('n') or check.startswith('N')
+
+def draw_hist_observe(df:pd.DataFrame,bin_col:str):
+    df_observe = df[df[legend_config.array_marker_flag] == int(legend_config.observe)][bin_col].value_counts(sort=False)
+    print(df_observe)
+    print('Min number observe: ',np.min(df_observe),'\n')
+    print('Max number observe: ',np.max(df_observe),'\n')
+    print('Mean number observe: ',np.mean(df_observe),'\n')
+
+def legend_to_region(legend_file,hap_file,number_bin,inter_bin_width_percen:float = 0,no_observation=False):
+    #make region folder
+    legend_config.make_region_dir(legend_file)
+    legend_config.make_region_dir(hap_file)
+
+    legend_data = pd.read_csv(legend_file,sep=legend_config.legend_split_params)    
+    nb_line = len(legend_data)
+    bin_col = 'bin'
+    legend_data[bin_col] = pd.qcut(np.arange(nb_line),number_bin,labels=False)
+    draw_hist_observe(legend_data,bin_col)
+    contain_alert, labels = get_nb_bins_each_nb_variants(legend_data[bin_col].values)
+    header_alert = 'Info about number variant and number bin each variant'
+    question_alert = 'Agree to div bin by this?'    
+    while alert_yes_no(header_alert,contain_alert,question_alert):
+        print('Chose new number bin')
+        old_nb_bin = number_bin
+        try:
+            number_bin = int(input())
+        except:
+            number_bin = old_nb_bin
+            print('number bin contain number character only!\n')
+            continue
+        legend_data[bin_col] = pd.qcut(np.arange(nb_line),number_bin,labels=False)
+        draw_hist_observe(legend_data,bin_col)
+        contain_alert, labels = get_nb_bins_each_nb_variants(legend_data[bin_col].values)    
+    with g.reading(hap_file) as hap_file_stream:
+        # label are sorted and orderly in data.
+        # When we loop over label each line (exclude header) at legend file is map with line at hap file.
+        max_label = max(labels)
+        nb_character = len(str(max_label))
+        legend_files = []
+        legend_gtrue_files = []
+        hap_files = []
+        hap_gtrue_files = []
+        next_header_legend = pd.DataFrame()
+        next_header_hap = []
+        for i, label in enumerate(tqdm(labels,desc='create region data from legend')):
+            # get new data at this loop
+            bin_data = legend_data[legend_data[bin_col] == label] # this bin data
+            nb_data = len(bin_data)
+            this_privious_index = int(nb_data*inter_bin_width_percen)
+            this_next_index = nb_data - int(nb_data*inter_bin_width_percen)
+            # file_path
+            legend_region_file = legend_config.get_legend_region_file_name(legend_file,label,nb_character)
+            legend_region_gtrue_file = legend_config.get_legend_gtrue_file(legend_region_file)
+            hap_region_file = legend_config.get_hap_region_file_name(hap_file,label,nb_character)
+            hap_region_gtrue_file = legend_config.get_hap_gtrue_file(hap_region_file)
+            # write hap file
+            previous_tail_hap = []            
+            with g.writing(hap_region_file) as hap_region_file_stream, \
+                g.writing(hap_region_gtrue_file) as hap_region_gtrue_file_stream:
+                
+                # writting concat data of 2 region
+                if len(next_header_hap) > 0:
+                    hap_region_file_stream.writelines(next_header_hap)
+                    if no_observation == False:
+                        hap_region_gtrue_file_stream.writelines(next_header_hap)
+                    next_header_hap.clear()                
+                
+                for i in tqdm(range(nb_data),desc='process region {}'.format(label),leave=False):
+                    line = hap_file_stream.readline()
+                    # Nếu flag là observe thì ghi vô cả 2 file
+                    flag = str(bin_data.iloc[i][legend_config.array_marker_flag])
+                    if flag == legend_config.observe:
+                        hap_region_file_stream.write(line)
+                        if i >= this_next_index:
+                            next_header_hap.append(line)
+                        if i < this_privious_index:
+                            previous_tail_hap.append(line)                            
+                        if no_observation:
+                            continue                    
+                    hap_region_gtrue_file_stream.write(line)
+            # write data to previous hap file
+            if len(hap_files)>0:
+                with g.appending(hap_files[-1]) as previous_hap_file:
+                    previous_hap_file.writelines(previous_tail_hap)
+            if len(hap_gtrue_files)>0 and no_observation == False:
+                with g.appending(hap_gtrue_files[-1]) as previous_hap_gtrue_file:
+                    previous_hap_gtrue_file.writelines(previous_tail_hap)
+            previous_tail_hap.clear()
+            # Write legend file
+            #Previous legend
+            previous_tail_legend = pd.DataFrame(bin_data.iloc[:this_privious_index])
+            previous_tail_legend = previous_tail_legend[previous_tail_legend[legend_config.array_marker_flag] == int(legend_config.observe)]
+            if len(previous_tail_legend) > 0:
+                if len(legend_files) > 0:
+                    previous_legend = pd.read_csv(legend_files[-1],sep=legend_config.legend_split_params)
+                    previous_legend = pd.concat([previous_legend,previous_tail_legend])
+                    legend_config.legend_dataframe_to_csv(legend_files[-1],previous_legend)
+                    del previous_legend
+                
+                if len(legend_gtrue_files) > 0 and no_observation == False:
+                    previous_legend_gtrue = pd.read_csv(legend_gtrue_files[-1],sep=legend_config.legend_split_params)
+                    previous_legend_gtrue = pd.concat([previous_legend_gtrue,previous_tail_legend])
+                    legend_config.legend_dataframe_to_csv(legend_gtrue_files[-1],previous_legend_gtrue)
+                    del previous_legend_gtrue            
+            del previous_tail_legend
+            # make data for next region
+            temp_next_header_legend = pd.DataFrame(bin_data.iloc[this_next_index:])
+            temp_next_header_legend = temp_next_header_legend[temp_next_header_legend[legend_config.array_marker_flag]==int(legend_config.observe)]
+            #This legend
+            bin_data = pd.concat([next_header_legend,bin_data])
+            next_header_legend = temp_next_header_legend
+            del temp_next_header_legend
+            # save input file
+            this_legend = bin_data[bin_data[legend_config.array_marker_flag] == int(legend_config.observe)]
+            legend_config.legend_dataframe_to_csv(legend_region_file,this_legend)
+            del this_legend
+            # save gtrue
+            this_legend_gtrue = bin_data
+            del bin_data
+            if no_observation:
+                this_legend_gtrue = this_legend_gtrue[this_legend_gtrue[legend_config.array_marker_flag] == int(legend_config.unobserve)]
+            legend_config.legend_dataframe_to_csv(legend_region_gtrue_file,this_legend_gtrue)
+            del this_legend_gtrue
+            # add file
+            hap_files.append(hap_region_file)
+            hap_gtrue_files.append(hap_region_gtrue_file)
+            legend_files.append(legend_region_file)
+            legend_gtrue_files.append(legend_region_gtrue_file)
+def find_fw_index(position,positions):
+    bigger_indexs = np.where(positions >= position)[0]
+    index = None
+    if len(bigger_indexs) > 0:
+        index = np.min(bigger_indexs)        
+    else:
+        index = len(positions)
+    index = index -1
+    if index == -1:
+        index = None
+    return index
+
+def find_bw_index(position,positions):
+    bigger_indexs = np.where(positions > position)[0]
+    index = None
+    if len(bigger_indexs) > 0:
+        index = np.min(bigger_indexs)
+    return index
+
+def make_region_config(legend_folder:str,default_config_path:str):
+    # get legend path, not gtrue path
+    paths = []
+    for file_name in os.listdir(legend_folder):
+        path = os.path.join(legend_folder,file_name)
+        if os.path.isfile(path) and path.endswith(legend_config.legend_tail) and not path.endswith(legend_config.gtrue_legend_tail):
+            paths.append(path)
+    assert np.all([os.path.isfile(legend_config.get_legend_gtrue_file(path)) for path in paths]), 'gtrue file must in same folder'
+    paths.sort()
+    for path in tqdm(paths,desc='make region config'):
+        indata = pd.read_csv(path,sep=legend_config.legend_split_params)
+        gtrue_path = legend_config.get_legend_gtrue_file(path)
+        gtdata = pd.read_csv(gtrue_path,sep=legend_config.legend_split_params)        
+        ids = indata[legend_config.position].values        
+        fw_indexs = list(gtdata[legend_config.position].apply(lambda x: find_fw_index(x,ids)))
+        bw_indexs = list(gtdata[legend_config.position].apply(lambda x: find_bw_index(x,ids)))
+        num_inputs = len(indata)
+        legend_config.to_region_config(num_inputs,fw_indexs,bw_indexs,path,default_config_path)
+    
 def genotyping_vcf(vcf_file, manifest_file, hg_refgenome, output_prefix, chroms):
 
     g.check_required_software('samtools')
