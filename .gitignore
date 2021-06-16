@@ -3,10 +3,10 @@
 **.gz
 **.zip
 data/.vscode
-data/**/*.gz
-data/**/*.rar
-data/**/*.csv
-data/**/*.info
+data/**/**.gz
+data/**/**.rar
+data/**/**.csv
+data/**/**.info
 data/zarr
 git-actions-practice/
 **/genhelper/

@@ -92,6 +92,15 @@ def writing(filename):
     finally:
         fp.close()
 
+@contextmanager
+def appending(filename):
+    root, ext = os.path.splitext(filename)
+    fp = gzip.open(filename, 'at') if ext == '.gz' else open(filename, 'at')
+    try:
+        yield fp
+    finally:
+        fp.close()
+
 def list_expression_to_dict(list_expressions):
     redict = {}
     for expr in list_expressions:
@@ -120,6 +129,8 @@ def check_required_software(software_name):
     print_error()
     sys.exit(0)
 
+def get_true_file_prefix(output_prefix):
+    return output_prefix+'_true'
 
 def check_required_file(file_path):
     if not os.path.exists(file_path):

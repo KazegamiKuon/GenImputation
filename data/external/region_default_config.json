@@ -1,0 +1,7 @@
+{
+  "num_units": 40,
+  "num_layers": 4,
+  "feature_size": 10,  
+  "num_classes": 2,
+  "input_dim": 2  
+}
