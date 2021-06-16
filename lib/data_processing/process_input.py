@@ -343,10 +343,19 @@ def draw_hist_observe(df:pd.DataFrame,bin_col:str):
     print('Max number observe: ',np.max(df_observe),'\n')
     print('Mean number observe: ',np.mean(df_observe),'\n')
 
-def legend_to_region(legend_file,hap_file,number_bin,inter_bin_width_percen:float = 0,no_observation=False):
+def legend_to_region(legend_file,hap_file,number_bin,inter_bin_width_percen:float = 0,no_observation=False,output_folder=None):
     #make region folder
-    legend_config.make_region_dir(legend_file)
-    legend_config.make_region_dir(hap_file)
+    legend_region_folder = ''
+    hap_region_folder = ''
+    if output_folder is not None:
+        os.makedirs(output_folder,exist_ok=True)
+        if not os.path.isdir(output_folder):
+            output_folder, _ = g.get_dir_and_base_name(output_folder)
+        legend_region_folder = legend_config.make_region_dir(output_folder)
+        hap_region_folder = legend_region_folder
+    else:
+        legend_region_folder = legend_config.make_region_dir(legend_file)
+        hap_region_folder = legend_config.make_region_dir(hap_file)
 
     legend_data = pd.read_csv(legend_file,sep=legend_config.legend_split_params)    
     nb_line = len(legend_data)
@@ -386,9 +395,9 @@ def legend_to_region(legend_file,hap_file,number_bin,inter_bin_width_percen:floa
             this_privious_index = int(nb_data*inter_bin_width_percen)
             this_next_index = nb_data - int(nb_data*inter_bin_width_percen)
             # file_path
-            legend_region_file = legend_config.get_legend_region_file_name(legend_file,label,nb_character)
+            legend_region_file = legend_config.get_legend_region_file_name(legend_file,label,nb_character,output_folder=legend_region_folder)
             legend_region_gtrue_file = legend_config.get_legend_gtrue_file(legend_region_file)
-            hap_region_file = legend_config.get_hap_region_file_name(hap_file,label,nb_character)
+            hap_region_file = legend_config.get_hap_region_file_name(hap_file,label,nb_character,output_folder=hap_region_folder)
             hap_region_gtrue_file = legend_config.get_hap_gtrue_file(hap_region_file)
             # write hap file
             previous_tail_hap = []            
@@ -463,6 +472,8 @@ def legend_to_region(legend_file,hap_file,number_bin,inter_bin_width_percen:floa
             hap_gtrue_files.append(hap_region_gtrue_file)
             legend_files.append(legend_region_file)
             legend_gtrue_files.append(legend_region_gtrue_file)
+    return legend_region_folder
+
 def find_fw_index(position,positions):
     bigger_indexs = np.where(positions >= position)[0]
     index = None

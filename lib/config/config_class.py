@@ -149,24 +149,28 @@ class LegendConfig():
     def get_sample_value_line(self,sample_dict:dict)->str:
         values = list(map(sample_dict.get,self.sample_header))
         return self.sample_split_params.join(values)
-    
-    def get_dir_and_base_name(self,path:str)->str:
-        return os.path.dirname(path), os.path.basename(path)
 
     def make_region_dir(self,file_path:str)->None:
-        dirname = os.path.dirname(file_path)
+        dirname = file_path
+        if os.path.isfile(file_path):
+            dirname = os.path.dirname(file_path)
         dirname = os.path.join(dirname,self.region_folder)
         os.makedirs(dirname,exist_ok=True)
+        return dirname
 
-    def get_legend_region_file_name(self,file_path:str,bin:int,nb_character:int)->str:        
-        dirname, basename = self.get_dir_and_base_name(file_path)        
+    def get_legend_region_file_name(self,file_path:str,bin:int,nb_character:int,output_folder = None)->str:
+        dirname, basename = g.get_dir_and_base_name(file_path)
+        if output_folder is not None and os.path.isdir(output_folder):
+            dirname = output_folder
         region_tail = '_{:0'+str(nb_character)+'d}'+self.legend_tail
         basename = basename.replace(self.legend_tail,region_tail.format(bin))
         region_path = os.path.join(dirname,self.region_folder,basename)
         return region_path
 
-    def get_hap_region_file_name(self,file_path:str,bin:int,nb_character:int)->str:
-        dirname, basename = self.get_dir_and_base_name(file_path)        
+    def get_hap_region_file_name(self,file_path:str,bin:int,nb_character:int,output_folder = None)->str:
+        dirname, basename = g.get_dir_and_base_name(file_path)
+        if output_folder is not None and os.path.isdir(output_folder):
+            dirname = output_folder
         region_tail = '_{:0'+str(nb_character)+'d}'+self.hap_tail
         basename = basename.replace(self.hap_tail,region_tail.format(bin))
         region_path = os.path.join(dirname,self.region_folder,basename)
