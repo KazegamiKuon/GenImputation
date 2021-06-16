@@ -12,6 +12,12 @@ Same as **Folder tree should have structure** at test folder.
 
 ```tree
 interim
+├── G1K_chr20_hg38.hap.gz
+├── G1K_chr20_hg38.legend.gz
+├── G1K_chr20_hg38_true.hap.gz
+├── G1K_chr20_hg38_true.legend.gz
+├── G1K_chr20_hg38_true.sample
+├── process.ipynb
 ├── G1K_chr22_biallelic.vcf.gz
 ├── README.md
 └── VN_chr22_biallelic.vcf.gz
@@ -30,3 +36,5 @@ bcftools annotate --collapse all ./data/raw/G1K_chr22.vcf.gz | bcftools view -m2
 ```script
 bcftools annotate --collapse all ./data/raw/VN_chr22.vcf.gz | bcftools view -m2 -M2 -v snps -o ./data/interim/VN_chr22_biallelic.vcf.gz -O z
 ```
+
+**G1K_chr20_hg38** file is data by run cell at **process.ipynb**

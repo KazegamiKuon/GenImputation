@@ -330,6 +330,7 @@ def get_nb_bins_each_nb_variants(variant_labels):
     return pd.DataFrame({'nb variants':values,'nb bin':nb_bins}), labels
 
 def alert_yes_no(header,contain,question):
+    # return False
     print('{}\n'.format(header))
     print(contain)
     print('{} [y/n]'.format(question))
@@ -337,13 +338,13 @@ def alert_yes_no(header,contain,question):
     return check.startswith('n') or check.startswith('N')
 
 def draw_hist_observe(df:pd.DataFrame,bin_col:str):
-    df_observe = df[df[legend_config.array_marker_flag] == int(legend_config.observe)][bin_col].value_counts(sort=False)
-    print(df_observe)
-    print('Min number observe: ',np.min(df_observe),'\n')
-    print('Max number observe: ',np.max(df_observe),'\n')
-    print('Mean number observe: ',np.mean(df_observe),'\n')
+    df_observe = df[df[legend_config.array_marker_flag] == int(legend_config.observe)][bin_col].value_counts()
+    nb_obser_col = 'nb_observe'
+    df_observe = pd.DataFrame({'bin':df_observe.index,nb_obser_col:df_observe.values})
+    print(df_observe[nb_obser_col].describe(percentiles=[0.1,0.25,0.5,0.75,0.9]))
+    print('\n')
 
-def legend_to_region(legend_file,hap_file,number_bin,inter_bin_width_percen:float = 0,no_observation=False,output_folder=None):
+def legend_to_region(legend_file,hap_file,number_bin,inter_bin_width_percen:float = 0,no_observation=False,output_folder=None)->str:
     #make region folder
     legend_region_folder = ''
     hap_region_folder = ''
