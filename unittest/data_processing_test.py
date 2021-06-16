@@ -18,6 +18,7 @@ class DataProcessingTest(unittest.TestCase):
         self.legend_file = '/home/cuong/VBDI/HungProject/GenImputation/data/interim/G1K_chr20_hg38_true.legend.gz'
         self.hap_file = '/home/cuong/VBDI/HungProject/GenImputation/data/interim/G1K_chr20_hg38_true.hap.gz'
         self.region_folder = '/home/cuong/VBDI/HungProject/GenImputation/data/interim/region'
+        self.output_folder = '/home/cuong/VBDI/HungProject/GenImputation/data/train'
         self.default_config = '/home/cuong/VBDI/HungProject/GenImputation/data/external/region_default_config.json'
 
     # def test_plot_r2_by_maf(self):
@@ -78,6 +79,7 @@ class DataProcessingTest(unittest.TestCase):
         pi.process_data_to_legend(self.vcf_file,self.manifest_file,self.hg_fasta_file,self.chroms,self.my_output_prefix)
     
     def test_legend_to_region(self):
+        # pi.legend_to_region(self.legend_file,self.hap_file,100,0.1,True,output_folder=self.output_folder)
         pi.legend_to_region(self.legend_file,self.hap_file,100,0.1,True)
     
     def test_region_config(self):
