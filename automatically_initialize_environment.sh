@@ -16,5 +16,5 @@ dependencies:
  - pandas 
  - seaborn
  - pip" > environment.yml
- fi
+fi
 conda env create -f environment.yml

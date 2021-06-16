@@ -13,13 +13,20 @@ Same as **Folder tree should have structure** at test folder.
 ```tree
 interim
 ├── G1K_chr22_biallelic.vcf.gz
-└── README.md
+├── README.md
+└── VN_chr22_biallelic.vcf.gz
 ```
 
 ## Description
 
-**G1K_chr22_biallelic.vcf.gz** was created by remove multiallelic and duplicate position (keep first position). **learning_vcf** environment must activate. File was created by this script at root project:
+**G1K_chr22_biallelic.vcf.gz** was created by remove multiallelic and duplicate position (keep first position). File was created by this script at root project:
 
 ```script
 bcftools annotate --collapse all ./data/raw/G1K_chr22.vcf.gz | bcftools view -m2 -M2 -v snps -o ./data/interim/G1K_chr22_biallelic.vcf.gz -O z
+```
+
+**VN_chr22_biallelic.vcf.gz** was created by remove multiallelic and duplicate position (keep first position). File was created by this script at root project:
+
+```script
+bcftools annotate --collapse all ./data/raw/VN_chr22.vcf.gz | bcftools view -m2 -M2 -v snps -o ./data/interim/VN_chr22_biallelic.vcf.gz -O z
 ```

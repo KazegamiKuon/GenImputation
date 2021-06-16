@@ -1,4 +1,4 @@
-# Deep-learning-and-Machine-Learning-Workflow
+# GenImputation
 
 This is template repository. Structure and automated workflow for AI project.
 
@@ -43,34 +43,9 @@ git checkout dev
 
 Every time when you want to create a branch, please create from develop branch. After you have created, change branch again.
 
-## Update (checkin) and push (checkout) your code
-
-Well this step, you should do in your local branch or maybe it call as feature branch.
-
-```script
-git pull
-git add .
-git commit -m "message/ description when commit"
-git push
-```
-
-When you done all your feature and wanna commit to dev, then easy do it at github.
-
-* **Step 1**: Go to full request at github.
-
-* **Step 2**: Create full request for your branch (should be feature branch if you not product own).
-
-* **Step 3**: Chose your branch (should be feature branch) and develop branch where it commit to.
-
-* **Step 4**: Review and if okie, click create full request.
-
-* **Step 5**: Your code woulde be reviewed by mentor or quality controler. Check, fix if something happen, else do next task.
-
-* **Step 6**: Create your feature branch and change to it. Return step 1 if you done it.
-
 ## Install/Uninstall your environment
 
-I was make file bash for easy do it
+I make file bash for easy do it
 
 For install environment, run **automatically_initialize_environment.sh** file. Your environment name will same as your folder repository
 
@@ -88,6 +63,31 @@ Get git actions bash to automatic
 
 ```script
 git clone https://github.com/KazegamiKuon/git-actions-practice.git
+```
+
+Activate environment and setup required [samtools](http://www.htslib.org/download/). Download **htslib**, **samtools** and **bcftools**.Unless have it, then run script below to setup.
+
+```script
+wget https://github.com/samtools/htslib/releases/download/1.12/htslib-1.12.tar.bz2
+tar xjf htslib-1.12.tar.bz2
+cd ./htslib-1.12/
+sudo bash ./configure
+make
+sudo make install
+cd ../
+wget https://github.com/samtools/samtools/releases/download/1.12/samtools-1.12.tar.bz2
+tar xif samtools-1.12.tar.bz2
+cd ./samtools-1.12/
+sudo bash ./configure
+make
+sudo make install
+cd ../
+wget https://github.com/samtools/bcftools/releases/download/1.12/bcftools-1.12.tar.bz2
+tar xif bcftools-1.12.tar.bz2
+cd bcftools-1.12/
+sudo bash ./configure
+make
+sudo make install
 ```
 
 ## (coming soon)
