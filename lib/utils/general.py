@@ -101,6 +101,9 @@ def appending(filename):
     finally:
         fp.close()
 
+def get_dir_and_base_name(path:str)->str:
+    return os.path.dirname(path), os.path.basename(path)
+
 def list_expression_to_dict(list_expressions):
     redict = {}
     for expr in list_expressions:
