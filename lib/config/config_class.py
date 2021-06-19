@@ -47,6 +47,7 @@ class VCFConfig():
         self.genotype_split_params = '|'
         self.info_key = VCFInfoConfig()
         self.chrom_values = list(np.hstack([np.arange(1,23).astype(str),np.array(['X','Y'])]))
+        self.vcf_tails = ['.vcf','vcf.gz','vcf.tar.gz']
 
 vcf_config = VCFConfig()
 
