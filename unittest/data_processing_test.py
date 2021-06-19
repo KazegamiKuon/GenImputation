@@ -86,6 +86,14 @@ class DataProcessingTest(unittest.TestCase):
         pi.make_region_config(self.region_folder,self.default_config)
     # def test_genotyping_vcf(self):
     #     pi.genotyping_vcf(self.vcf_file,self.manifest_file,self.hg_fasta_file,self.my_output_prefix,self.chroms)
+    
+    def test_ssh_config(self):
+        manifest_file = "/client/user1/data_imputation_vn/APMRA96_chr20_for_imputation_chr20_AF.vcf.gz"
+        vcf_file = "/client/user1/data_imputation_vn/ref1014_chr20_for_imputation_chr20_AF.vcf.gz"
+        fasta_file = "/client/user1/cuongdev/GenImputation/data/raw/hg38.fa.gz"
+        chroms = ['chr20']
+        ouput_prefix = '/client/user1/cuongdev/GenImputation/data/interim/ref1014_chr20_hg38'
+        pi.process_data_to_legend(vcf_file,manifest_file,fasta_file,chroms,ouput_prefix)
 
 if __name__ == '__main__':
     unittest.main()

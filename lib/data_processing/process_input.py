@@ -48,6 +48,22 @@ def align(ref_seq, seq):
             return i
     return -1
 
+def parse_manifest_from_vcfgenotype(vcf_file:str,chr_nums:list,hg_refgenome)->dict:
+    marker_dict = {}
+    with g.reading(vcf_file) as vcfp:
+        header_dict = process_vcf_header(vcfp)
+        for line in tqdm(vcfp, desc='create marker from manifest'):
+            # đọc line và tách ra thành từng item
+            chrom, position, snp, ref, alts, info_dict, genotypes = get_data_from_line(
+                line, header_dict)
+            if chrom not in chr_nums:
+                continue
+            if chrom not in marker_dict:
+                marker_dict[chrom] = {}
+            if position not in marker_dict[chrom]:
+                marker_dict[chrom][position] = []
+            marker_dict[chrom][position].append([ref]+alts)
+    return marker_dict
 
 def parse_manifest(manifest_file, chr_nums: list, hg_refgenome):
     marker_dict = {}
@@ -112,18 +128,21 @@ def parse_manifest(manifest_file, chr_nums: list, hg_refgenome):
     return marker_dict
 
 
-def mapping_marker(chrom, position, ref, alts, marker_dict):
+def mapping_marker(chrom, position, ref, alts:list, marker_dict):
     flag = legend_config.unobserve
     if chrom in marker_dict:
         maker_position = marker_dict[chrom]
         if position in maker_position:
             for alleles in maker_position[position]:
-                if alleles[0] == ref and alleles[1] in alts:
+                if ref in alleles and np.any([alt in alleles for alt in alts]):
                     flag = legend_config.observe
                     break
-                if alleles[1] in alts and alleles[0] == ref:
-                    flag = legend_config.observe
-                    break
+                # if alleles[0] == ref and alleles[1] in alts:
+                #     flag = legend_config.observe
+                #     break
+                # if alleles[1] in alts and alleles[0] == ref:
+                #     flag = legend_config.observe
+                #     break
     return flag
 
 
@@ -280,7 +299,7 @@ def prepare_test_hap(hap_file, legend_file, output_prefix):
             if array_marker_flag_list[i]:
                 w_fp.write(line)
 
-
+# TODO move to genhelper
 def process_vcf_header(rf: TextIOWrapper, wf: TextIOWrapper = None, write_callback=None):
     '''
     input:
@@ -535,7 +554,7 @@ def genotyping_vcf(vcf_file, manifest_file, hg_refgenome, output_prefix, chroms)
 
 def process_data_to_legend(vcf_file, manifest_file, hg_refgenome, chroms, output_prefix, test_sample_list_file=None):
 
-    g.check_required_software('samtools')
+    # g.check_required_software('samtools')
     g.check_required_file(vcf_file)
     g.check_required_file(manifest_file)
     g.check_required_file(hg_refgenome)
@@ -549,7 +568,11 @@ def process_data_to_legend(vcf_file, manifest_file, hg_refgenome, chroms, output
                 keep_sample_list.append(line.rstrip())
     except:
         keep_sample_list = None
-    marker_dict = parse_manifest(manifest_file, chroms, hg_refgenome)
+    marker_dict = {}
+    if np.any([manifest_file.endswith(tail) for tail in vcf_config.vcf_tails]):
+        marker_dict = parse_manifest_from_vcfgenotype(manifest_file, chroms, hg_refgenome)
+    else:
+        marker_dict = parse_manifest(manifest_file, chroms, hg_refgenome)
     true_hap_file, true_legend_file = vcf2haplegend(vcf_file, keep_sample_list, marker_dict,true_output_prefix)
     # Dont need anymore bcuz vcf2haplegend was do that
     # set_marker_flags(
