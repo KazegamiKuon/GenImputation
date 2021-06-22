@@ -362,7 +362,7 @@ def make_bin_legend_data(legend_data:pd.DataFrame,number_bin,bin_observe = False
     else:
         return pd.qcut(np.arange(nb_data),number_bin,labels=False)
 
-def legend_to_region(legend_file:str,hap_file:str,number_bin:int,inter_bin_width_percen:float = 0,no_observation=False,output_folder=None,bin_observe=False)->str:
+def process_legend_to_region(legend_file:str,hap_file:str,number_bin:int,inter_bin_width_percen:float = 0,no_observation=False,output_folder=None,bin_observe=False)->str:
     #make region folder
     legend_region_folder = ''
     hap_region_folder = ''
@@ -511,7 +511,7 @@ def find_bw_index(position,positions):
         index = np.min(bigger_indexs)
     return index
 
-def make_region_config(legend_folder:str,default_config_path:str):
+def process_region_config(legend_folder:str,default_config_path:str):
     # get legend path, not gtrue path
     paths = []
     for file_name in os.listdir(legend_folder):
@@ -530,7 +530,7 @@ def make_region_config(legend_folder:str,default_config_path:str):
         num_inputs = len(indata)
         legend_config.to_region_config(num_inputs,fw_indexs,bw_indexs,path,default_config_path)
     
-def genotyping_vcf(vcf_file, manifest_file, hg_refgenome, output_prefix, chroms):
+def process_genotyping_vcf(vcf_file, manifest_file, hg_refgenome, output_prefix, chroms):
 
     g.check_required_software('samtools')
     g.check_required_file(vcf_file)
