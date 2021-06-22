@@ -15,6 +15,5 @@ __pycache__/
 samtools*/
 htslib*/
 bcftools*/
-#temp
-data/test/**/
-data/train/**/
+data/test/rnn/
+data/train/region/
