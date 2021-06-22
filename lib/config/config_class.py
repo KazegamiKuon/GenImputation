@@ -47,6 +47,7 @@ class VCFConfig():
         self.genotype_split_params = '|'
         self.info_key = VCFInfoConfig()
         self.chrom_values = list(np.hstack([np.arange(1,23).astype(str),np.array(['X','Y'])]))
+        self.vcf_tails = ['.vcf','vcf.gz','vcf.tar.gz']
 
 vcf_config = VCFConfig()
 
@@ -164,7 +165,7 @@ class LegendConfig():
             dirname = output_folder
         region_tail = '_{:0'+str(nb_character)+'d}'+self.legend_tail
         basename = basename.replace(self.legend_tail,region_tail.format(bin))
-        region_path = os.path.join(dirname,self.region_folder,basename)
+        region_path = os.path.join(dirname,basename)
         return region_path
 
     def get_hap_region_file_name(self,file_path:str,bin:int,nb_character:int,output_folder = None)->str:
@@ -173,7 +174,7 @@ class LegendConfig():
             dirname = output_folder
         region_tail = '_{:0'+str(nb_character)+'d}'+self.hap_tail
         basename = basename.replace(self.hap_tail,region_tail.format(bin))
-        region_path = os.path.join(dirname,self.region_folder,basename)
+        region_path = os.path.join(dirname,basename)
         return region_path
     
     def get_legend_gtrue_file(self,legend_file:str)->str:

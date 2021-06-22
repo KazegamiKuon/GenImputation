@@ -18,6 +18,7 @@ class DataProcessingTest(unittest.TestCase):
         self.legend_file = '/home/cuong/VBDI/HungProject/GenImputation/data/interim/G1K_chr20_hg38_true.legend.gz'
         self.hap_file = '/home/cuong/VBDI/HungProject/GenImputation/data/interim/G1K_chr20_hg38_true.hap.gz'
         self.region_folder = '/home/cuong/VBDI/HungProject/GenImputation/data/interim/region'
+        self.output_folder = '/home/cuong/VBDI/HungProject/GenImputation/data/train'
         self.default_config = '/home/cuong/VBDI/HungProject/GenImputation/data/external/region_default_config.json'
 
     # def test_plot_r2_by_maf(self):
@@ -78,12 +79,21 @@ class DataProcessingTest(unittest.TestCase):
         pi.process_data_to_legend(self.vcf_file,self.manifest_file,self.hg_fasta_file,self.chroms,self.my_output_prefix)
     
     def test_legend_to_region(self):
+        # pi.legend_to_region(self.legend_file,self.hap_file,100,0.1,True,output_folder=self.output_folder)
         pi.legend_to_region(self.legend_file,self.hap_file,100,0.1,True)
     
     def test_region_config(self):
         pi.make_region_config(self.region_folder,self.default_config)
     # def test_genotyping_vcf(self):
     #     pi.genotyping_vcf(self.vcf_file,self.manifest_file,self.hg_fasta_file,self.my_output_prefix,self.chroms)
+    
+    def test_ssh_config(self):
+        manifest_file = "/client/user1/data_imputation_vn/APMRA96_chr20_for_imputation_chr20_AF.vcf.gz"
+        vcf_file = "/client/user1/data_imputation_vn/ref1014_chr20_for_imputation_chr20_AF.vcf.gz"
+        fasta_file = "/client/user1/cuongdev/GenImputation/data/raw/hg38.fa.gz"
+        chroms = ['chr20']
+        ouput_prefix = '/client/user1/cuongdev/GenImputation/data/interim/ref1014_chr20_hg38'
+        pi.process_data_to_legend(vcf_file,manifest_file,fasta_file,chroms,ouput_prefix)
 
 if __name__ == '__main__':
     unittest.main()

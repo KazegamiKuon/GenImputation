@@ -17,7 +17,6 @@ import matplotlib.pyplot as plt
 from ..utils import general as g
 from ..config.config_class import vcf_config, mani_config, legend_config
 
-
 def complement_base(base):
     if base == 'A':
         return 'T'
@@ -29,13 +28,11 @@ def complement_base(base):
         return 'G'
     return 'N'
 
-
 def get_sequence(region, hg_refgenome):
     command = 'samtools faidx {:s} {:s}'.format(hg_refgenome, region)
     lines = g.system_with_stdout(command)
     sequence = ''.join(lines[1:])
     return sequence
-
 
 def align(ref_seq, seq):
     for i in range(len(ref_seq) - len(seq)):
@@ -48,8 +45,24 @@ def align(ref_seq, seq):
             return i
     return -1
 
+def parse_manifest_from_vcfgenotype(vcf_file:str,chr_nums:list,hg_refgenome:str)->dict:
+    marker_dict = {}
+    with g.reading(vcf_file) as vcfp:
+        header_dict = process_vcf_header(vcfp)
+        for line in tqdm(vcfp, desc='create marker from manifest'):
+            # đọc line và tách ra thành từng item
+            chrom, position, snp, ref, alts, info_dict, genotypes = get_data_from_line(
+                line, header_dict)
+            if chrom not in chr_nums:
+                continue
+            if chrom not in marker_dict:
+                marker_dict[chrom] = {}
+            if position not in marker_dict[chrom]:
+                marker_dict[chrom][position] = []
+            marker_dict[chrom][position].append([ref]+alts)
+    return marker_dict
 
-def parse_manifest(manifest_file, chr_nums: list, hg_refgenome):
+def parse_manifest_from_manifest(manifest_file:str, chr_nums: list, hg_refgenome:str)->dict:
     marker_dict = {}
     with g.reading(manifest_file) as fp:
         for line in fp:
@@ -111,37 +124,29 @@ def parse_manifest(manifest_file, chr_nums: list, hg_refgenome):
             marker_dict[chrom][position].append(alleles)
     return marker_dict
 
+def parse_manifest(manifest_file:str, chr_nums: list, hg_refgenome:str)->dict:
+    isvcf = any([manifest_file.endswith(tail) for tail in vcf_config.vcf_tails])
+    if isvcf:
+        parse_manifest_from_vcfgenotype(manifest_file,chr_nums,hg_refgenome)
+    else:
+        parse_manifest_from_manifest(manifest_file,chr_nums,hg_refgenome)
 
-def mapping_marker(chrom, position, ref, alts, marker_dict):
+def mapping_marker(chrom, position, ref, alts:list, marker_dict):
     flag = legend_config.unobserve
     if chrom in marker_dict:
         maker_position = marker_dict[chrom]
         if position in maker_position:
             for alleles in maker_position[position]:
-                if alleles[0] == ref and alleles[1] in alts:
+                if ref in alleles and np.any([alt in alleles for alt in alts]):
                     flag = legend_config.observe
                     break
-                if alleles[1] in alts and alleles[0] == ref:
-                    flag = legend_config.observe
-                    break
+                # if alleles[0] == ref and alleles[1] in alts:
+                #     flag = legend_config.observe
+                #     break
+                # if alleles[1] in alts and alleles[0] == ref:
+                #     flag = legend_config.observe
+                #     break
     return flag
-
-
-# def set_marker_flags(legend_file, marker_dict, output_file):
-#     g.mkdir(os.path.dirname(output_file))
-#     with g.reading(legend_file) as fp, \
-#             g.writing(output_file) as w_fp:
-#         w_fp.write(fp.readline().rstrip() + ' ' +
-#                    legend_config.array_marker_flag+'\n')
-#         for line in tqdm(fp, desc='set marker flags'):
-#             items = g.line_to_items(line)
-#             chrom = items[legend_config.chrom_index]
-#             position = items[legend_config.position_index]
-#             ref = items[legend_config.reference_index]
-#             alts = [items[legend_config.alternate_allele_index]]
-#             flag = mapping_marker(chrom, position, ref, alts, marker_dict)
-#             w_fp.write('{:s} {:s}\n'.format(line.rstrip(), flag))
-
 
 def get_data_from_line(line, header_dict):
     items = g.line_to_items(line, vcf_config.vcf_data_split_params)
@@ -162,7 +167,6 @@ def get_data_from_line(line, header_dict):
     genotypes = items[vcf_config.vcf_header_sample_startindex:]
     return chrom, position, snp, ref, alts, info_dict, genotypes
 
-
 def is_missing_genotype(genotype):
     if genotype == '.':
         return True
@@ -171,7 +175,6 @@ def is_missing_genotype(genotype):
     if genotype == '.|.':
         return True
     return False
-
 
 def vcf2haplegend(vcf_file, keep_sample_list, marker_dict, output_prefix):
     g.mkdir(os.path.dirname(output_prefix))
@@ -249,7 +252,6 @@ def vcf2haplegend(vcf_file, keep_sample_list, marker_dict, output_prefix):
                     l_fp.write('{}\n'.format(legend_value_line))
     return hap_file, legend_file
 
-
 def prepare_test_hap(hap_file, legend_file, output_prefix):
     array_marker_flag_list = []
     output_legend_file = legend_config.get_legend_file_name(output_prefix)
@@ -280,7 +282,7 @@ def prepare_test_hap(hap_file, legend_file, output_prefix):
             if array_marker_flag_list[i]:
                 w_fp.write(line)
 
-
+# TODO move to genhelper
 def process_vcf_header(rf: TextIOWrapper, wf: TextIOWrapper = None, write_callback=None):
     '''
     input:
@@ -329,7 +331,9 @@ def get_nb_bins_each_nb_variants(variant_labels):
     values, nb_bins = np.unique(nb_values,return_counts=True)
     return pd.DataFrame({'nb variants':values,'nb bin':nb_bins}), labels
 
+# TODO move to general
 def alert_yes_no(header,contain,question):
+    # return False
     print('{}\n'.format(header))
     print(contain)
     print('{} [y/n]'.format(question))
@@ -337,13 +341,28 @@ def alert_yes_no(header,contain,question):
     return check.startswith('n') or check.startswith('N')
 
 def draw_hist_observe(df:pd.DataFrame,bin_col:str):
-    df_observe = df[df[legend_config.array_marker_flag] == int(legend_config.observe)][bin_col].value_counts(sort=False)
-    print(df_observe)
-    print('Min number observe: ',np.min(df_observe),'\n')
-    print('Max number observe: ',np.max(df_observe),'\n')
-    print('Mean number observe: ',np.mean(df_observe),'\n')
+    df_observe = df[df[legend_config.array_marker_flag] == int(legend_config.observe)][bin_col].value_counts()
+    nb_obser_col = 'nb_observe'
+    df_observe = pd.DataFrame({'bin':df_observe.index,nb_obser_col:df_observe.values})
+    print(df_observe[nb_obser_col].describe(percentiles=[0.1,0.25,0.5,0.75,0.9]))
+    print('\n')
 
-def legend_to_region(legend_file,hap_file,number_bin,inter_bin_width_percen:float = 0,no_observation=False,output_folder=None):
+def make_bin_legend_data(legend_data:pd.DataFrame,number_bin,bin_observe = False):
+    nb_data = len(legend_data)
+    bin_col = 'bin'
+    if bin_observe:
+        bin_col_data = pd.DataFrame({bin_col:np.full(nb_data,np.NaN)})
+        observes = legend_data[legend_config.array_marker_flag] == int(legend_config.observe)
+        nb_observe = np.count_nonzero(observes)
+        bin_col_data[bin_col].values[observes] = pd.qcut(np.arange(nb_observe),number_bin,labels=False)
+        bin_col_data[bin_col].fillna(method='pad',inplace=True)
+        bin_col_data[bin_col].fillna(method='bfill',inplace=True)
+        bin_col_data[bin_col].astype(int)
+        return bin_col_data[bin_col].values
+    else:
+        return pd.qcut(np.arange(nb_data),number_bin,labels=False)
+
+def legend_to_region(legend_file:str,hap_file:str,number_bin:int,inter_bin_width_percen:float = 0,no_observation=False,output_folder=None,bin_observe=False)->str:
     #make region folder
     legend_region_folder = ''
     hap_region_folder = ''
@@ -357,10 +376,9 @@ def legend_to_region(legend_file,hap_file,number_bin,inter_bin_width_percen:floa
         legend_region_folder = legend_config.make_region_dir(legend_file)
         hap_region_folder = legend_config.make_region_dir(hap_file)
 
-    legend_data = pd.read_csv(legend_file,sep=legend_config.legend_split_params)    
-    nb_line = len(legend_data)
+    legend_data = pd.read_csv(legend_file,sep=legend_config.legend_split_params)
     bin_col = 'bin'
-    legend_data[bin_col] = pd.qcut(np.arange(nb_line),number_bin,labels=False)
+    legend_data[bin_col] =  make_bin_legend_data(legend_data,number_bin,bin_observe)
     draw_hist_observe(legend_data,bin_col)
     contain_alert, labels = get_nb_bins_each_nb_variants(legend_data[bin_col].values)
     header_alert = 'Info about number variant and number bin each variant'
@@ -374,9 +392,9 @@ def legend_to_region(legend_file,hap_file,number_bin,inter_bin_width_percen:floa
             number_bin = old_nb_bin
             print('number bin contain number character only!\n')
             continue
-        legend_data[bin_col] = pd.qcut(np.arange(nb_line),number_bin,labels=False)
+        legend_data[bin_col] = make_bin_legend_data(legend_data,number_bin,bin_observe)
         draw_hist_observe(legend_data,bin_col)
-        contain_alert, labels = get_nb_bins_each_nb_variants(legend_data[bin_col].values)    
+        contain_alert, labels = get_nb_bins_each_nb_variants(legend_data[bin_col].values)
     with g.reading(hap_file) as hap_file_stream:
         # label are sorted and orderly in data.
         # When we loop over label each line (exclude header) at legend file is map with line at hap file.
@@ -531,10 +549,9 @@ def genotyping_vcf(vcf_file, manifest_file, hg_refgenome, output_prefix, chroms)
                 wf.write(line)
     print('\ngenotyping from vcf done!\n')
 
+def process_data_to_legend(vcf_file, manifest_file, hg_refgenome, chroms, output_prefix, sample_list_file=None):
 
-def process_data_to_legend(vcf_file, manifest_file, hg_refgenome, chroms, output_prefix, test_sample_list_file=None):
-
-    g.check_required_software('samtools')
+    # g.check_required_software('samtools')
     g.check_required_file(vcf_file)
     g.check_required_file(manifest_file)
     g.check_required_file(hg_refgenome)
@@ -543,7 +560,7 @@ def process_data_to_legend(vcf_file, manifest_file, hg_refgenome, chroms, output
 
     keep_sample_list = []
     try:
-        with open(test_sample_list_file) as fp:
+        with open(sample_list_file) as fp:
             for line in fp:
                 keep_sample_list.append(line.rstrip())
     except:
