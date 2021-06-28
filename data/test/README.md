@@ -37,6 +37,8 @@ test
 
 ## Description
 
+**3 script below** create input and gtruth for minimac 4 impute
+
 **G1K_chr22_biallelic_gtruth.recode.vcf.gz** file was created by this script at root project:
 
 ```script

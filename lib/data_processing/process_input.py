@@ -11,7 +11,6 @@ import os
 from tqdm.notebook import tqdm
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 # from lib.utils import general as g
 # from lib.config.config_class import vcf_config, mani_config
 from ..utils import general as g

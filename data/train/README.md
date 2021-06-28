@@ -24,6 +24,8 @@ train
 
 **NOTE**: see **README.md** at data root folder to use minimac.
 
+**To impute by minimac3** data should be biallelic.
+
 **G1K_chr22_biallelic_train.recode.vcf.gz** file was created by this script at root project:
 
 ```script
