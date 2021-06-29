@@ -18,3 +18,5 @@ htslib*/
 bcftools*/
 data/test/rnn/
 data/train/region/
+**/**/**_private.*
+**/sample_info/
