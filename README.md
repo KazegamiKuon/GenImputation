@@ -45,25 +45,36 @@ Every time when you want to create a branch, please create from develop branch. 
 
 ## Install/Uninstall your environment
 
-I make file bash for easy do it
+I make file bash for easy do it.
 
-For install environment, run **automatically_initialize_environment.sh** file. Your environment name will same as your folder repository
-
-```scipt
-bash ./automatically_initialize_environment.sh
-```
-
-For uninstall environment, run **automatically_destroy_environment.sh** file. Your environment name will same as your folder repository
+**setup-library.sh** will install some necessary reponsitory and setup conda environment.
 
 ```script
-bash ./automatically_destroy_environment.sh
+source setup-library.sh
 ```
 
-Get git actions bash to automatic
+If the environment already exists, **samtools** and **bcftools** should installed and avaible.
+Run below script to check it available or not.
 
 ```script
-git clone https://github.com/KazegamiKuon/git-actions-practice.git
+bcftools
+samtools
 ```
+
+If you didn't see library document and shown some error, Use below script to fix it or see **Samtools, bcftools other way install**.
+
+```script
+conda install -c bioconda samtools=1.9 --force-reinstall
+conda install -c bioconda bcftools=1.9 --force-reinstall
+```
+
+For some reason, If bcftools still can't activate, you should run this script:
+
+```script
+conda install openssl=1.0
+```
+
+## Samtools, bcftools other way install
 
 Activate environment and setup required [samtools](http://www.htslib.org/download/). Download **htslib**, **samtools** and **bcftools**.Unless have it, then run script below to setup.
 
