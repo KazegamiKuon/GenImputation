@@ -8,6 +8,7 @@ data/**/**.rar
 data/**/**.csv
 data/**/**.info
 data/**/**.sample
+data/**/**.config.json
 data/zarr
 git-actions-practice/
 **/genhelper/

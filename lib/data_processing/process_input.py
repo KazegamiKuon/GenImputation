@@ -129,6 +129,7 @@ def parse_manifest(manifest_file:str, chr_nums: list, hg_refgenome:str)->dict:
         parse_manifest_from_vcfgenotype(manifest_file,chr_nums,hg_refgenome)
     else:
         parse_manifest_from_manifest(manifest_file,chr_nums,hg_refgenome)
+    print('Create marker done!')
 
 def mapping_marker(chrom, position, ref, alts:list, marker_dict):
     flag = legend_config.unobserve
