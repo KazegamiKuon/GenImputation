@@ -8,6 +8,7 @@ data/**/**.rar
 data/**/**.csv
 data/**/**.info
 data/**/**.sample
+data/**/**.config.json
 data/zarr
 git-actions-practice/
 **/genhelper/
@@ -17,3 +18,5 @@ htslib*/
 bcftools*/
 data/test/rnn/
 data/train/region/
+**/**/**_private.*
+**/sample_info/
