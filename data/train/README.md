@@ -24,14 +24,15 @@ train
 
 **NOTE**: see **README.md** at data root folder to use minimac.
 
-**To impute by minimac3** data should be biallelic.
+**To impute by minimac3** data should be biallelic. Then see below to prepare data.
 
-**G1K_chr22_biallelic_train.recode.vcf.gz** file was created by this script at root project:
+**m3vcf.gz**:
 
 ```script
-vcftools --gzvcf ./data/interim/G1K_chr22_biallelic.vcf.gz --remove ./data/external/test_100_samples.txt --out ./data/train/G1K_chr22_biallelic_train --recode --recode-INFO-all
-gzip ./data/train/G1K_chr22_biallelic_train.recode.vcf.gz
+minimac3 --refHaps <data path to train> --processReference --prefix <ouput name prefix>
 ```
+
+## For the impatient
 
 **G1K_chr22_biallelic_train.recode.m3vcf.gz** file was created by this script at this folder:
 
