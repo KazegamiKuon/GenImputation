@@ -21,3 +21,4 @@ data/train/region/
 **/**/**_private.*
 **/sample_info/
 **/*_private*/
+**/zarr/
