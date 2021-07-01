@@ -25,16 +25,17 @@ interim
 
 ## Description
 
-**G1K_chr22_biallelic.vcf.gz** was created by remove multiallelic and duplicate position (keep first position). File was created by this script at root project:
+**Declare variable**
 
-```script
-bcftools annotate --collapse all ./data/raw/G1K_chr22.vcf.gz | bcftools view -m2 -M2 -v snps -o ./data/interim/G1K_chr22_biallelic.vcf.gz -O z
+```
+source_file="./data/raw/G1K_chr20_hg38.vcf.gz"
+output_file="./data/interim/G1K_chr20_biallelic.vcf.gz"
 ```
 
-**VN_chr22_biallelic.vcf.gz** was created by remove multiallelic and duplicate position (keep first position). File was created by this script at root project:
+**G1K_chr20_biallelic.vcf.gz** was created by remove multiallelic and duplicate position (keep first position). File was created by this script at root project:
 
 ```script
-bcftools annotate --collapse all ./data/raw/VN_chr22.vcf.gz | bcftools view -m2 -M2 -v snps -o ./data/interim/VN_chr22_biallelic.vcf.gz -O z
+bcftools annotate --collapse all $source_file | bcftools view -m2 -M2 -v snps -o $output_file -O z
 ```
 
 **G1K_chr20_hg38** file is data by run cell at **process.ipynb**

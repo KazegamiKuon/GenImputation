@@ -4,6 +4,7 @@
 **.zip
 data/.vscode
 data/**/**.gz
+data/**/**.gz.*
 data/**/**.rar
 data/**/**.csv
 data/**/**.info
