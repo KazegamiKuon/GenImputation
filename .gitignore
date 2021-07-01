@@ -10,6 +10,8 @@ data/**/**.csv
 data/**/**.info
 data/**/**.sample
 data/**/**.config.json
+data/**/**.rec
+data/**/**.erate
 data/zarr
 git-actions-practice/
 **/genhelper/
