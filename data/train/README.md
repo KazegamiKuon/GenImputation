@@ -24,15 +24,33 @@ train
 
 **NOTE**: see **README.md** at data root folder to use minimac.
 
-**G1K_chr22_biallelic_train.recode.vcf.gz** file was created by this script at root project:
+**To impute by minimac3** data should be biallelic. Then see below to prepare data.
+
+**m3vcf.gz**:
 
 ```script
-vcftools --gzvcf ./data/interim/G1K_chr22_biallelic.vcf.gz --remove ./data/external/test_100_samples.txt --out ./data/train/G1K_chr22_biallelic_train --recode --recode-INFO-all
-gzip ./data/train/G1K_chr22_biallelic_train.recode.vcf.gz
+minimac3 --refHaps <data path to train> --processReference --prefix <ouput name prefix>
 ```
 
-**G1K_chr22_biallelic_train.recode.m3vcf.gz** file was created by this script at this folder:
+## For the impatient
+
+**Declare Variable**
 
 ```script
-minimac3 --refHaps G1K_chr22_biallelic_train.recode.vcf.gz --processReference --prefix G1K_chr22_biallelic_train.recode
+data_source="./data/interim/G1K_chr20_biallelic.vcf.gz"
+train_prefix="./data/train/G1K_chr20_biallelic_train.vcf.gz"
+test_sample="./data/external/test_100_samples.txt"
+m3vcf_prefix="./data/train/G1K_chr20_biallelic_train"
+```
+
+**G1K_chr20_biallelic_train.vcf.gz** file was created by this script at this folder:
+
+```script
+bcftools view $data_source -o $train_prefix -O z -S ^$test_sample
+```
+
+**G1K_chr20_biallelic_train.m3vcf.gz** file was created by this script at this folder:
+
+```script
+minimac3 --refHaps $train_prefix --processReference --prefix $m3vcf_prefix
 ```
