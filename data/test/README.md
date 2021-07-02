@@ -39,23 +39,37 @@ test
 
 **3 script below** create input and gtruth for minimac 4 impute
 
-**G1K_chr22_biallelic_gtruth.recode.vcf.gz** file was created by this script at root project:
+**Declare variable:**
 
 ```script
-vcftools --gzvcf ./data/interim/G1K_chr22_biallelic.vcf.gz --keep ./data/external/test_100_samples.txt --exclude-positions ./data/external/omni_chr22_position.csv --out ./data/test/G1K_chr22_biallelic_gtruth --recode --recode-INFO-all
-gzip ./data/test/G1K_chr22_biallelic_gtruth.recode.vcf
-
+source="./data/interim/G1K_chr20_biallelic.vcf.gz"
+gtruth="./data/test/G1K_chr20_biallelic_gtruth.vcf.gz"
+input="./data/test/G1K_chr20_biallelic_input.vcf.gz"
+dir_input="./data/test/G1K_chr20_biallelic_input"
+dir_input_file="./data/test/G1K_chr20_biallelic_input/0000.vcf.gz"
+genotype="This is path of genotype vcf file to exstract that position from gtruth"
+sample="./data/external/test_100_samples.txt"
+train="./data/train/G1K_chr20_biallelic_train.m3vcf.gz"
+predict_prefix="./data/test/G1K_chr22_biallelic_predict"
 ```
 
-**G1K_chr22_biallelic_input.recode.vcf.gz** file was created by this script at root project:
+**G1K_chr20_biallelic_gtruth.vcf.gz** file was created by this script at root project:
 
 ```script
-vcftools --gzvcf ./data/interim/G1K_chr22_biallelic.vcf.gz --keep ./data/external/test_100_samples.txt --positions ./data/external/omni_chr22_position.csv --out ./data/test/G1K_chr22_biallelic_input --recode --recode-INFO-all
-gzip ./data/test/G1K_chr22_biallelic_input.recode.vcf
+bcftools view $source -o $gtruth -O z -S $sample
 ```
 
-**G1K_chr22_biallelic_predict.dose.vcf.gz** file was created by this script at this folder:
+**G1K_chr20_biallelic_input.vcf.gz** file was created by this script at root project:
 
 ```script
-minimac4 --refHaps ../train/G1K_chr22_biallelic_train.recode.m3vcf.gz --haps G1K_chr22_biallelic_input.recode.vcf.gz --allTypedSites --log --cpus 4 --prefix G1K_chr22_biallelic_predict
+bcftools index $gtruth
+bcftools index $genotype
+bcftools isec $gtruth $genotype -p $dir_input -n =2 -w 1 -O z
+cp $dir_input_file $input
+```
+
+**G1K_chr20_biallelic_predict.dose.vcf.gz** file was created by this script at this folder by run at dockercontainer:
+
+```script
+minimac4 --refHaps $train --haps $input --allTypedSites --log --cpus 4 --prefix $predict_prefix
 ```
