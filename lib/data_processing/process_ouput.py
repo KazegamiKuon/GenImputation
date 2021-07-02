@@ -5,6 +5,7 @@ import numpy as np
 from sklearn.metrics import r2_score
 import matplotlib.pyplot as plt
 import zarr
+import types
 
 def plot_r2_by_maf(mafs,y_true,y_preds,bins=[-1,0.001,0.005,0.01,0.05,0.2,0.5],labels=None,draw=True):
     '''
@@ -56,14 +57,15 @@ def plot_r2_by_maf(mafs,y_true,y_preds,bins=[-1,0.001,0.005,0.01,0.05,0.2,0.5],l
         plt.legend()
         plt.show()
     return labels, r2_dict
-import types
-def get_r2_score_minimac_result(true_callset:zarr.Group,pred_callset:zarr.Group,source_callset:zarr.Group,sample_func:types.FunctionType,dbname:str,**kwargs):
+
+def get_r2_score_minimac_result(true_callset:zarr.Group,pred_callset:zarr.Group,source_callset:zarr.Group,sample_func:types.FunctionType,dbname:str,inter_callset:zarr.Group = None,**kwargs):
     '''
     input:
-        true_callset, pred_callset, source_callset: zarr.Group type data.
+        true_callset, pred_callset, source_callset, inter_callset: zarr.Group type data.
             Run by vcf_helper.vcf_to_zarr to get it zarr path and use zarr.open_group to get that call set
             True_callset from ground truth data and pred_callset from minimac predict data
             Source_callset from minimac train data
+            Inter_callset to intersect data from source with this
         dbname: name of dataset
         sample_func: (type:["true","pred"],sample_name)=> return str
             use for get name of sample to mapping if data true and pred have different sample
@@ -74,12 +76,18 @@ def get_r2_score_minimac_result(true_callset:zarr.Group,pred_callset:zarr.Group,
     pred_samples = [sample_func('pred',sample) for sample in pred_callset.samples[:]]
     pred_true_mask_samples = [sample in true_samples for sample in pred_samples]
     true_pred_mask_samples = [sample in pred_samples for sample in true_samples]
-    intersection_variant_id = vhelper.get_dataframe_variant_id([true_callset.variants,pred_callset.variants])
+    intersection_variant_id = pd.DataFrame()
+    if inter_callset is None:
+        intersection_variant_id = vhelper.get_dataframe_variant_id([true_callset.variants,pred_callset.variants,source_callset.variants])
+    else:
+        intersection_variant_id = vhelper.get_dataframe_variant_id([true_callset.variants,pred_callset.variants,source_callset.variants,inter_callset.variants])
     true_indexs=intersection_variant_id['index_0'].values
     pred_indexs=intersection_variant_id['index_1'].values
+    source_indexs=intersection_variant_id['index_2'].values
     afs = source_callset.variants.AF[:][:,0]
+    afs = afs[source_indexs]
     mafs = [af if af <= 0.5 else 1-af for af in afs]
-    
+
     y_true = true_callset.calldata.GT[:][true_indexs]
     y_true = y_true[:,true_pred_mask_samples,:]
     y_true = y_true.reshape((y_true.shape[0],y_true.shape[1]*2))
@@ -97,7 +105,7 @@ def get_r2_score_minimac_result(true_callset:zarr.Group,pred_callset:zarr.Group,
         gt:gt_r2_dict[gt],
         ds:ds_r2_dict[ds]
     })
-    return labels, r2_dict
+    return labels, r2_dict, mafs
 
 def plot_label_and_dict(labels:list,data_dict:dict,title=""):
     for key in data_dict:

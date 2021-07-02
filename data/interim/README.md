@@ -35,7 +35,12 @@ output_file="./data/interim/G1K_chr20_biallelic.vcf.gz"
 **G1K_chr20_biallelic.vcf.gz** was created by remove multiallelic and duplicate position (keep first position). File was created by this script at root project:
 
 ```script
-bcftools annotate --collapse all $source_file | bcftools view -m2 -M2 -v snps -o $output_file -O z
+bcftools norm -m -both $source_file -O z -o $output_file
+bcftools index $output_file
+```
+
+```
+bcftools norm -m -both $source_file -O z -o $output_file
 ```
 
 **G1K_chr20_hg38** file is data by run cell at **process.ipynb**

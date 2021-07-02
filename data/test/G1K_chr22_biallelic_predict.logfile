@@ -47,25 +47,25 @@
 
  Successful !!! 
 
- Reference Panel   : Found 2448 samples (4896 haplotypes) and 1706442 variants ...
+ Reference Panel   : Found 2448 samples (4896 haplotypes) and 1817492 variants ...
 
- Target/GWAS Panel : Found 100 samples (200 haplotypes) and 16833 variants ...
-                     16833 variants overlap with Reference panel 
+ Target/GWAS Panel : Found 100 samples (200 haplotypes) and 16886 variants ...
+                     16886 variants overlap with Reference panel 
                      0 variants imported that exist only in Target/GWAS panel
 
  ------------------------------------------------------------------------------
                            CHUNKING INFORMATION                           
  ------------------------------------------------------------------------------
 
- Chunking region into 3 chunk(s) with atleast 568814 variants in each chunk ... 
+ Chunking region into 3 chunk(s) with atleast 605830 variants in each chunk ... 
 
  Details of chunks is given below ...
 
  No   LeftBuffer      LeftEnd   RightPoint  RightBuffer       #Sites(GWAS/Ref/%)
  -------------------------------------------------------------------------------
-  1        60114        60114     20804650     23645330     6963/  650141/ 1.07%
-  2     17798322     20804651     45095187     48064771     6195/  731465/ 0.85%
-  3     42151627     45095188     64333662     64333662     7143/  650101/ 1.10%
+  1        60114        60114     20755309     23621010     6976/  692393/ 1.01%
+  2     17759643     20755310     45091440     48054480     6229/  779014/ 0.80%
+  3     42142941     45091441     64333662     64333662     7171/  692460/ 1.04%
 
 
  ------------------------------------------------------------------------------
@@ -75,29 +75,7 @@
  Starting imputation analysis of 3 chunk(s) ... 
 
  -------------------------------------------
- Analyzing Chunk 1/3 [20:60114-23645330]
- -------------------------------------------
-
- Reading chunk from reference panel ... 
- Reading chunk from target/GWAS panel ... 
-
- Compressing reference panel at GWAS sites ... 
- Re-compression successful (1 seconds) !!!
-
- Starting Imputation ...
-
-  Imputing Samples 1-100 [100%] out of 100 samples ...
-       Saving Samples in temporary VCF file ... 
-
- Imputation successful (17 seconds) !!!
-
- Appending chunk to final output VCF File :  ./data/test/G1K_chr22_biallelic_predict.dose.vcf.gz 
- Appending successful (9 seconds) !!!
-
- Time taken for this chunk = 31 seconds.
-
- -------------------------------------------
- Analyzing Chunk 2/3 [20:17798322-48064771]
+ Analyzing Chunk 1/3 [20:60114-23621010]
  -------------------------------------------
 
  Reading chunk from reference panel ... 
@@ -114,12 +92,12 @@
  Imputation successful (19 seconds) !!!
 
  Appending chunk to final output VCF File :  ./data/test/G1K_chr22_biallelic_predict.dose.vcf.gz 
- Appending successful (9 seconds) !!!
+ Appending successful (10 seconds) !!!
 
- Time taken for this chunk = 32 seconds.
+ Time taken for this chunk = 35 seconds.
 
  -------------------------------------------
- Analyzing Chunk 3/3 [20:42151627-64333662]
+ Analyzing Chunk 2/3 [20:17759643-48054480]
  -------------------------------------------
 
  Reading chunk from reference panel ... 
@@ -133,12 +111,34 @@
   Imputing Samples 1-100 [100%] out of 100 samples ...
        Saving Samples in temporary VCF file ... 
 
- Imputation successful (17 seconds) !!!
+ Imputation successful (21 seconds) !!!
 
  Appending chunk to final output VCF File :  ./data/test/G1K_chr22_biallelic_predict.dose.vcf.gz 
- Appending successful (9 seconds) !!!
+ Appending successful (10 seconds) !!!
 
- Time taken for this chunk = 30 seconds.
+ Time taken for this chunk = 35 seconds.
+
+ -------------------------------------------
+ Analyzing Chunk 3/3 [20:42142941-64333662]
+ -------------------------------------------
+
+ Reading chunk from reference panel ... 
+ Reading chunk from target/GWAS panel ... 
+
+ Compressing reference panel at GWAS sites ... 
+ Re-compression successful (1 seconds) !!!
+
+ Starting Imputation ...
+
+  Imputing Samples 1-100 [100%] out of 100 samples ...
+       Saving Samples in temporary VCF file ... 
+
+ Imputation successful (19 seconds) !!!
+
+ Appending chunk to final output VCF File :  ./data/test/G1K_chr22_biallelic_predict.dose.vcf.gz 
+ Appending successful (10 seconds) !!!
+
+ Time taken for this chunk = 33 seconds.
 
  ------------------------------------------------------------------------------
                               SUMMARY OF ANALYSIS                              
@@ -147,10 +147,10 @@
  Info file written to                    : ./data/test/G1K_chr22_biallelic_predict.info
  Imputed VCF information written to      : ./data/test/G1K_chr22_biallelic_predict.dose.vcf.gz
 
- Time Taken for Reading File             = 14 seconds
+ Time Taken for Reading File             = 16 seconds
  Time Taken for Re-compression           = 3 seconds
- Time Taken for Imputation               = 28 seconds
- Time Taken for Writing File             = 52 seconds
+ Time Taken for Imputation               = 31 seconds
+ Time Taken for Writing File             = 58 seconds
 
  ------------------------------------------------------------------------------
                                 END OF PROGRAM                                 
@@ -158,7 +158,7 @@
 
  Program Successfully Implemented... 
  
- Total Run completed in 0 hours, 1 mins, 40 seconds.
+ Total Run completed in 0 hours, 1 mins, 50 seconds.
 
  Thank You for using Minimac4 !!! 
 

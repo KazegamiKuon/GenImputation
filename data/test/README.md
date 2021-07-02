@@ -64,7 +64,7 @@ bcftools view $source -o $gtruth -O z -S $sample
 ```script
 bcftools index $gtruth
 bcftools index $genotype
-bcftools isec -c none $gtruth $genotype -p $dir_input -n =2 -w 1 -O z
+bcftools isec $gtruth $genotype -p $dir_input -n =2 -w 1 -O z
 cp $dir_input_file $input
 ```
 

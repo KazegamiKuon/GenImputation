@@ -12,7 +12,6 @@ data/.vscode
 **.config.json
 **.rec
 **.erate
-data/zarr
 git-actions-practice/
 **/genhelper/
 __pycache__/
@@ -25,3 +24,4 @@ data/train/region/
 **/sample_info/
 **/*_private*/
 **/zarr/
+**.zarr/
