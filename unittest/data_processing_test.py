@@ -5,6 +5,7 @@ import os
 import unittest
 import numpy as np
 from lib.data_processing import process_input as pi
+from lib.data_processing import GenNLPMaskedDataset
 
 class DataProcessingTest(unittest.TestCase):
     def __init__(self, methodName: str) -> None:
@@ -20,6 +21,11 @@ class DataProcessingTest(unittest.TestCase):
         self.region_folder = '/home/cuong/VBDI/HungProject/GenImputation/data/interim/region'
         self.output_folder = '/home/cuong/VBDI/HungProject/GenImputation/data/train'
         self.default_config = '/home/cuong/VBDI/HungProject/GenImputation/data/external/region_default_config.json'
+        self.vcf_file_g1k = '/client/user1/cuongdev/GenImputation/data/interim/G1K_chr20_biallelic.vcf.gz'
+        self.vcf_inter_file = '/client/user1/cuongdev/GenImputation/data/interim/vn_isec_1k_data_private/VN_20_hg38.vcf.gz'
+        self.vcf_inter_prefix = '/client/user1/cuongdev/GenImputation/data/interim/G1K_VN_chr20_biallelic'
+        self.document_data = ['/client/user1/cuongdev/GenImputation/data/train/G1K_VN_chr20_biallelic_train.page.gz']
+        self.vocab_file = '/client/user1/cuongdev/GenImputation/data/train/electra/data_dir/vocab.txt'
 
     # def test_plot_r2_by_maf(self):
     #     #params
@@ -75,25 +81,32 @@ class DataProcessingTest(unittest.TestCase):
     #     labels, r2_dict = po.plot_r2_by_maf(mafs,y_true,{'paper':y_paper_pred,'own':y_me_pred})
     #     print('')
     
-    def test_process_data(self):
-        pi.process_data_to_legend(self.vcf_file,self.manifest_file,self.hg_fasta_file,self.chroms,self.my_output_prefix)
+    # def test_process_data(self):
+    #     pi.process_data_to_legend(self.vcf_file,self.manifest_file,self.hg_fasta_file,self.chroms,self.my_output_prefix)
     
-    def test_legend_to_region(self):
-        # pi.legend_to_region(self.legend_file,self.hap_file,100,0.1,True,output_folder=self.output_folder)
-        pi.legend_to_region(self.legend_file,self.hap_file,100,0.1,True)
+    # def test_legend_to_region(self):
+    #     # pi.legend_to_region(self.legend_file,self.hap_file,100,0.1,True,output_folder=self.output_folder)
+    #     pi.process_legend_to_region(self.legend_file,self.hap_file,100,0.1,True)
     
-    def test_region_config(self):
-        pi.make_region_config(self.region_folder,self.default_config)
-    # def test_genotyping_vcf(self):
-    #     pi.genotyping_vcf(self.vcf_file,self.manifest_file,self.hg_fasta_file,self.my_output_prefix,self.chroms)
+    # def test_region_config(self):
+    #     pi.process_region_config(self.region_folder,self.default_config)
+    # # def test_genotyping_vcf(self):
+    # #     pi.genotyping_vcf(self.vcf_file,self.manifest_file,self.hg_fasta_file,self.my_output_prefix,self.chroms)
     
-    def test_ssh_config(self):
-        manifest_file = "/client/user1/data_imputation_vn/APMRA96_chr20_for_imputation_chr20_AF.vcf.gz"
-        vcf_file = "/client/user1/data_imputation_vn/ref1014_chr20_for_imputation_chr20_AF.vcf.gz"
-        fasta_file = "/client/user1/cuongdev/GenImputation/data/raw/hg38.fa.gz"
-        chroms = ['chr20']
-        ouput_prefix = '/client/user1/cuongdev/GenImputation/data/interim/ref1014_chr20_hg38'
-        pi.process_data_to_legend(vcf_file,manifest_file,fasta_file,chroms,ouput_prefix)
+    # def test_ssh_config(self):
+    #     manifest_file = "/client/user1/data_imputation_vn/APMRA96_chr20_for_imputation_chr20_AF.vcf.gz"
+    #     vcf_file = "/client/user1/data_imputation_vn/ref1014_chr20_for_imputation_chr20_AF.vcf.gz"
+    #     fasta_file = "/client/user1/cuongdev/GenImputation/data/raw/hg38.fa.gz"
+    #     chroms = ['chr20']
+    #     ouput_prefix = '/client/user1/cuongdev/GenImputation/data/interim/ref1014_chr20_hg38'
+    #     pi.process_data_to_legend(vcf_file,manifest_file,fasta_file,chroms,ouput_prefix)
+    
+    def test_page(self):
+        pi.process_vcf_to_page_nlp(self.vcf_file_g1k,[self.vcf_inter_file],0,self.vcf_inter_prefix)
+    
+    def test_nlp_dataset(self):
+        dataset = GenNLPMaskedDataset(self.document_data,self.vocab_file)
+        pass
 
 if __name__ == '__main__':
     unittest.main()

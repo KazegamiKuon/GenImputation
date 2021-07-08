@@ -51,6 +51,42 @@ class VCFConfig():
 
 vcf_config = VCFConfig()
 
+class VCFpageNLP:
+    def __init__(self) -> None:
+        self.page = "page"
+        self.variant = "variant"
+        self.info = "info"
+        self.token = 'token'
+        self.masked = 'masked'
+
+        self.__file_tyeps = [self.page,self.variant,self.info,self.token,self.masked]
+
+        self.page_split_params = ' '
+        self.tail = dict({
+            self.page: '.page.gz',
+            self.variant: '.variant.gz',
+            self.info: '.info',
+            self.token: '.token.json.gz',
+            self.masked:'.masked.json.gz'
+        })
+        pass
+    
+    def get_file_path(self,output_prefix:str,file_type:str)->str:
+        assert file_type in self.__file_tyeps, 'type must be in this list [{}]'.format(', '.join(self.__file_tyeps))
+        return output_prefix+self.tail.get(file_type)
+    
+    def get_file_path_from_page(self,path:str,file_type:str,detail_name:str='')->str:
+        assert file_type in self.__file_tyeps, 'type must be in this list [{}]'.format(', '.join(self.__file_tyeps))
+        assert path.endswith(self.tail[self.page]), "Must be page type data"
+        return path.replace(self.tail[self.page],detail_name+ self.tail[file_type])
+    
+    def token_masked_to_json(self,data:dict,path:str)->None:
+        with g.writing(path) as wjson:
+            json.dump(data,wjson)
+
+
+page_config = VCFpageNLP()    
+
 class RegionConfig():
     @multimethod
     def __init__(self,num_inputs:int,fw:list,bw:list,config_json:str) -> None:

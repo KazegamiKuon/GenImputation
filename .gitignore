@@ -25,3 +25,5 @@ data/train/region/
 **/*_private*/
 **/zarr/
 **.zarr/
+*electra/
+**.page.txt

@@ -8,13 +8,19 @@ from posixpath import sep
 import sys
 import re
 import os
+from time import time
 from tqdm.notebook import tqdm
 import pandas as pd
 import numpy as np
 # from lib.utils import general as g
 # from lib.config.config_class import vcf_config, mani_config
 from ..utils import general as g
-from ..config.config_class import vcf_config, mani_config, legend_config
+from ..config.config_class import vcf_config, mani_config, legend_config, page_config
+from ..genhelper import vcf_helper as vhelper
+from ..genhelper.config_class import vcf_zarr_config as vzarrconfig
+import zarr
+import typing
+import types
 
 def complement_base(base):
     if base == 'A':
@@ -577,6 +583,53 @@ def process_data_to_legend(vcf_file, manifest_file, hg_refgenome, chroms, output
         true_legend_file,
         output_prefix)
     print('\nprepare data from vcf done!\n')
+
+def process_vcf_to_page_nlp(vcf_file:str,inter_vcfs:typing.List[str],af_source:int,ouput_prefix:str,region:int=None,batch_size:int=None):
+    nb_vcf = len(inter_vcfs)
+    assert af_source <= nb_vcf, "af_source must be in range [0, {}]".format(nb_vcf)
+    zarr_path = vhelper.vcf_to_zarr(vcf_file,False)
+    inter_paths = []
+    for inter_vcf in inter_vcfs:
+        inter_path = vhelper.vcf_to_zarr(inter_vcf,False)
+        inter_paths.append(inter_path)    
+    callsets = [zarr.open_group(zarr_path),*list(map(zarr.open_group,inter_paths))]
+    samples = callsets[0].samples[:]
+    nb_samples = len(samples)
+    assert not (batch_size is not None and batch_size < (nb_samples/2)), "batch size must lower than nb samples div 2"
+    # create variant file
+    print("Creating .variant.gz file!")
+    df_variant_ids = vhelper.get_dataframe_variant_id([callset.variants for callset in callsets])
+    nb_variants = len(df_variant_ids)
+    assert not (region is not None and (nb_variants/region > 10000) and (nb_variants % region > 8000)), "batch size must lower than nb samples div 2"
+    afs = callsets[af_source].variants.AF[:,0]
+    af_source_indexs = df_variant_ids[vzarrconfig.get_index_col(af_source)].values
+    df_variant_ids['af'] = afs[af_source_indexs]
+    df_variant_path = page_config.get_file_path(ouput_prefix,page_config.variant)
+    # df_variant_ids.to_csv(df_variant_path)
+    print("Done .variant.gz file!")
+    # create page file
+    page_path = page_config.get_file_path(ouput_prefix,page_config.page)
+    with g.writing(page_path) as pf:
+        variant_indexs = df_variant_ids[vzarrconfig.get_index_col(0)].values
+        print("Load variant data!")
+        gt = callsets[0].calldata.GT.get_orthogonal_selection((variant_indexs,slice(None),slice(None)))
+        gt = gt.reshape((gt.shape[0],gt.shape[1]*2))
+        gt = gt.T
+        print("Done!")
+        for sample in tqdm(gt,desc="vcf genotype data to page file:"):            
+            converted = list(map(vzarrconfig.gtmmap.get,sample))
+            line = page_config.page_split_params.join(converted)+'\n'
+            pf.write(line)
+            pf.write('\n')
+            pass
+        print("Done!")
+    info_path = page_config.get_file_path(ouput_prefix,page_config.info)
+    # create info file
+    with g.writing(info_path) as ifile:
+        sample_names = list(callsets[0].samples[:])
+        line = ' '.join(sample_names)
+        ifile.write(line)
+    pass
 
 # if __name__ == '__main__':
 
