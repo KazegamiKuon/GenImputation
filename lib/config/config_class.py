@@ -71,9 +71,9 @@ class VCFpageNLP:
         })
         pass
     
-    def get_file_path(self,output_prefix:str,file_type:str)->str:
+    def get_file_path(self,output_prefix:str,file_type:str,region:int,batch:int)->str:
         assert file_type in self.__file_tyeps, 'type must be in this list [{}]'.format(', '.join(self.__file_tyeps))
-        return output_prefix+self.tail.get(file_type)
+        return output_prefix+'.r{0:04d}.b{1:04d}'.format(region,batch)+ self.tail.get(file_type)
     
     def get_file_path_from_page(self,path:str,file_type:str,detail_name:str='')->str:
         assert file_type in self.__file_tyeps, 'type must be in this list [{}]'.format(', '.join(self.__file_tyeps))

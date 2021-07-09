@@ -584,7 +584,7 @@ def process_data_to_legend(vcf_file, manifest_file, hg_refgenome, chroms, output
         output_prefix)
     print('\nprepare data from vcf done!\n')
 
-def process_vcf_to_page_nlp(vcf_file:str,inter_vcfs:typing.List[str],af_source:int,ouput_prefix:str,region:int=None,batch_size:int=None):
+def process_vcf_to_page_nlp(vcf_file:str,inter_vcfs:typing.List[str],af_source:int,ouput_prefix:str,nb_region:int=1,nb_batch:int=1):
     nb_vcf = len(inter_vcfs)
     assert af_source <= nb_vcf, "af_source must be in range [0, {}]".format(nb_vcf)
     zarr_path = vhelper.vcf_to_zarr(vcf_file,False)
@@ -595,41 +595,48 @@ def process_vcf_to_page_nlp(vcf_file:str,inter_vcfs:typing.List[str],af_source:i
     callsets = [zarr.open_group(zarr_path),*list(map(zarr.open_group,inter_paths))]
     samples = callsets[0].samples[:]
     nb_samples = len(samples)
-    assert not (batch_size is not None and batch_size < (nb_samples/2)), "batch size must lower than nb samples div 2"
+    assert not (nb_batch > 1 and nb_batch < (nb_samples/2) and (nb_samples % nb_batch >=50)), "batch size must lower than nb samples div 2 and min number samples each batch is 50"
     # create variant file
     print("Creating .variant.gz file!")
     df_variant_ids = vhelper.get_dataframe_variant_id([callset.variants for callset in callsets])
     nb_variants = len(df_variant_ids)
-    assert not (region is not None and (nb_variants/region > 10000) and (nb_variants % region > 8000)), "batch size must lower than nb samples div 2"
+    assert not (nb_region > 1 and (nb_variants/nb_region > 10000) and (nb_variants % nb_region > 6000)), "batch size must lower than nb samples div 2"
     afs = callsets[af_source].variants.AF[:,0]
     af_source_indexs = df_variant_ids[vzarrconfig.get_index_col(af_source)].values
     df_variant_ids['af'] = afs[af_source_indexs]
-    df_variant_path = page_config.get_file_path(ouput_prefix,page_config.variant)
-    # df_variant_ids.to_csv(df_variant_path)
-    print("Done .variant.gz file!")
-    # create page file
-    page_path = page_config.get_file_path(ouput_prefix,page_config.page)
-    with g.writing(page_path) as pf:
-        variant_indexs = df_variant_ids[vzarrconfig.get_index_col(0)].values
-        print("Load variant data!")
-        gt = callsets[0].calldata.GT.get_orthogonal_selection((variant_indexs,slice(None),slice(None)))
-        gt = gt.reshape((gt.shape[0],gt.shape[1]*2))
-        gt = gt.T
-        print("Done!")
-        for sample in tqdm(gt,desc="vcf genotype data to page file:"):            
-            converted = list(map(vzarrconfig.gtmmap.get,sample))
-            line = page_config.page_split_params.join(converted)+'\n'
-            pf.write(line)
-            pf.write('\n')
-            pass
-        print("Done!")
-    info_path = page_config.get_file_path(ouput_prefix,page_config.info)
-    # create info file
-    with g.writing(info_path) as ifile:
-        sample_names = list(callsets[0].samples[:])
-        line = ' '.join(sample_names)
-        ifile.write(line)
-    pass
+    # create data
+    variant_indexs = df_variant_ids[vzarrconfig.get_index_col(0)].values
+    print("Load variant data!")
+    gt = callsets[0].calldata.GT.get_orthogonal_selection((variant_indexs,slice(None),slice(None)))
+    gt = gt.reshape((gt.shape[0],gt.shape[1]*2))
+    gt = gt.T
+    print("Done!")
+    nb_region_elements = nb_variants // nb_region
+    nb_batch_samples = nb_samples // nb_batch
+    for i in tqdm(range(nb_region),desc="Create region data"):
+        sreg = i*nb_region_elements
+        ereg = i+1 if i < nb_region -1 else i+2
+        ereg = ereg*nb_region_elements
+        temp_variant_ids = df_variant_ids.iloc[sreg:ereg]
+        for j in tqdm(range(nb_batch),desc="Create batch data of region {}".format(i),leave=False):
+            sbch = j*nb_batch_samples
+            ebch = j+1 if j < nb_batch -1 else j+2
+            ebch = ebch*nb_batch_samples
+            variant_path = page_config.get_file_path(ouput_prefix,page_config.variant,i,j)
+            page_path = page_config.get_file_path(ouput_prefix,page_config.page,i,j)
+            info_path = page_config.get_file_path(ouput_prefix,page_config.info,i,j)            
+            with g.writing(info_path) as ifile:
+                temp_samples = samples[sbch:ebch]
+                line = ' '.join(temp_samples)
+                ifile.write(line)
+            temp_variant_ids.to_csv(variant_path)            
+            temp_gt = gt[sbch:ebch,sreg:ereg]
+            with g.writing(page_path) as pf:
+                for sample in tqdm(temp_gt,desc="vcf genotype data to page file:",leave=False):
+                    converted = list(map(vzarrconfig.gtmmap.get,sample))
+                    line = page_config.page_split_params.join(converted)+'\n'
+                    pf.write(line)
+                    pf.write('\n')
 
 # if __name__ == '__main__':
 

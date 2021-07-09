@@ -1,3 +1,4 @@
+from keras.backend import shape
 import torch
 from torch.utils.data.dataset import Dataset
 import typing
@@ -17,7 +18,8 @@ def masked_token(rand,tokens:typing.List[int],masked_value:int,masked_per=0.9)->
     # get masked index by percent nb token data exclude start/end token
     masked_indexs = rand.permutation(nb_elements)[:int(nb_elements*masked_per)]+1
     temp[masked_indexs] = masked_value
-    return list(temp)
+    temp = temp.tolist()
+    return temp
 
 def token_default_dict(tokenizer:ElectraTokenizer):
     return {key:[] for key, val in tokenizer("").items()}
@@ -40,7 +42,7 @@ class GenNLPMaskedDataset(Dataset):
         # reading and save data
         for i, dpath in enumerate(tqdm(document_paths,desc="preprocess data from document")):
             token_file = page_config.get_file_path_from_page(dpath,page_config.token)
-            masked_file = page_config.get_file_path_from_page(dpath,page_config.masked,str(seed))
+            masked_file = page_config.get_file_path_from_page(dpath,page_config.masked,'.s'+str(seed))
             labels = []
             maskeds = token_default_dict(self.tokenizer)
 
@@ -52,7 +54,6 @@ class GenNLPMaskedDataset(Dataset):
                 if os.path.isfile(masked_file):
                     with g.reading(masked_file) as maskedf:
                         maskeds = json.load(maskedf)
-                        continue
                 else:
                     maskeds[self.input_ids] = [masked_token(self.rand,label,self.tokenizer.mask_token_id,masked_per) for label in labels]
                     page_config.token_masked_to_json(maskeds,masked_file)
@@ -74,12 +75,15 @@ class GenNLPMaskedDataset(Dataset):
                 page_config.token_masked_to_json({**maskeds,**{self.input_ids:labels}},token_file)
             # append data to this data
             self.labels.extend(labels)
-            [self.maskeds[key].extend(val) for key, val in maskeds]                        
+            [self.maskeds[key].extend(val) for key, val in maskeds.items()]                        
         # conver labels and masked data to tensor
         self.labels = torch.as_tensor(self.labels)
         for key, val in self.maskeds.items():
             self.maskeds[key] = torch.as_tensor(val)
     
+    def max_position_embeddings(self):
+        return self.labels.shape[1]
+
     def __len__(self):
         return len(self.labels)
     
