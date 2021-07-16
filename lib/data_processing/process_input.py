@@ -2,7 +2,6 @@
 
 from argparse import ArgumentParser
 from io import TextIOWrapper
-import json
 import os
 from posixpath import sep
 import sys
@@ -131,11 +130,13 @@ def parse_manifest_from_manifest(manifest_file:str, chr_nums: list, hg_refgenome
 
 def parse_manifest(manifest_file:str, chr_nums: list, hg_refgenome:str)->dict:
     isvcf = any([manifest_file.endswith(tail) for tail in vcf_config.vcf_tails])
+    marker = None
     if isvcf:
-        parse_manifest_from_vcfgenotype(manifest_file,chr_nums,hg_refgenome)
+        marker = parse_manifest_from_vcfgenotype(manifest_file,chr_nums,hg_refgenome)
     else:
-        parse_manifest_from_manifest(manifest_file,chr_nums,hg_refgenome)
+        marker = parse_manifest_from_manifest(manifest_file,chr_nums,hg_refgenome)
     print('Create marker done!')
+    return marker
 
 def mapping_marker(chrom, position, ref, alts:list, marker_dict):
     flag = legend_config.unobserve
@@ -584,7 +585,7 @@ def process_data_to_legend(vcf_file, manifest_file, hg_refgenome, chroms, output
         output_prefix)
     print('\nprepare data from vcf done!\n')
 
-def process_vcf_to_page_nlp(vcf_file:str,inter_vcfs:typing.List[str],af_source:int,ouput_prefix:str,nb_region:int=1,nb_batch:int=1):
+def process_vcf_to_page_nlp(vcf_file:str,inter_vcfs:typing.List[str],af_source:int,ouput_prefix:str,nb_region:int=1,nb_batch:int=1,manifest_file:str=None,hg_refgenome:str=None):
     nb_vcf = len(inter_vcfs)
     assert af_source <= nb_vcf, "af_source must be in range [0, {}]".format(nb_vcf)
     zarr_path = vhelper.vcf_to_zarr(vcf_file,False)
@@ -613,31 +614,52 @@ def process_vcf_to_page_nlp(vcf_file:str,inter_vcfs:typing.List[str],af_source:i
     print("Done!")
     nb_region_elements = nb_variants // nb_region
     nb_batch_samples = nb_samples // nb_batch
+    variant_paths = []
     for i in tqdm(range(nb_region),desc="Create region data"):
         sreg = i*nb_region_elements
         ereg = i+1 if i < nb_region -1 else i+2
         ereg = ereg*nb_region_elements
         temp_variant_ids = df_variant_ids.iloc[sreg:ereg]
+        # create variant id only one time all sample
+        variant_path = page_config.get_file_path(ouput_prefix,page_config.variant,i)
+        variant_paths.append(variant_path)
+        temp_variant_ids.to_csv(variant_path,index=False)
         for j in tqdm(range(nb_batch),desc="Create batch data of region {}".format(i),leave=False):
-            sbch = j*nb_batch_samples
+            sbch = j*nb_batch_samples*2
             ebch = j+1 if j < nb_batch -1 else j+2
-            ebch = ebch*nb_batch_samples
-            variant_path = page_config.get_file_path(ouput_prefix,page_config.variant,i,j)
-            page_path = page_config.get_file_path(ouput_prefix,page_config.page,i,j)
-            info_path = page_config.get_file_path(ouput_prefix,page_config.info,i,j)            
-            with g.writing(info_path) as ifile:
-                temp_samples = samples[sbch:ebch]
-                line = ' '.join(temp_samples)
-                ifile.write(line)
-            temp_variant_ids.to_csv(variant_path)            
+            ebch = ebch*nb_batch_samples*2
+            # create sample file info only one time
+            if i == 0:
+                info_path = page_config.get_file_path(ouput_prefix,page_config.info,i,j)
+                with g.writing(info_path) as ifile:
+                    temp_samples = samples[sbch:ebch]
+                    line = ' '.join(temp_samples)
+                    ifile.write(line)
             temp_gt = gt[sbch:ebch,sreg:ereg]
+            # create page file
+            page_path = page_config.get_file_path(ouput_prefix,page_config.page,i,j)
             with g.writing(page_path) as pf:
                 for sample in tqdm(temp_gt,desc="vcf genotype data to page file:",leave=False):
                     converted = list(map(vzarrconfig.gtmmap.get,sample))
                     line = page_config.page_split_params.join(converted)+'\n'
                     pf.write(line)
                     pf.write('\n')
+    if manifest_file is not None and hg_refgenome is not None:
+        process_map_manifest_to_variant_nlp(variant_paths,manifest_file,hg_refgenome)
+    print("Process done!")
 
+def process_map_manifest_to_variant_nlp(vpaths:typing.List[str],manifest_file:str,hg_refgenome:str):
+    marker = {}
+    for vpath in tqdm(vpaths,desc="process map"):
+        variant_ids = pd.read_csv(vpath)        
+        chroms = variant_ids[vzarrconfig.chrom].unique()
+        chroms = [str(chrom) for chrom in chroms if str(chrom) not in marker]
+        if len(chroms) > 0:
+            temp_marker = parse_manifest(manifest_file,chroms,hg_refgenome)
+            marker.update(temp_marker)
+            del temp_marker
+        variant_ids[vzarrconfig.flag] = variant_ids.apply(lambda row: mapping_marker(str(row[vzarrconfig.chrom]),str(row[vzarrconfig.position]),row[vzarrconfig.ref],[row[vzarrconfig.alt]],marker),axis=1)
+        variant_ids.to_csv(vpath,index=False)
 # if __name__ == '__main__':
 
 #     parser = ArgumentParser(description='Prepare data for the model imputation ', add_help=True)

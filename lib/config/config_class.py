@@ -59,7 +59,7 @@ class VCFpageNLP:
         self.token = 'token'
         self.masked = 'masked'
 
-        self.__file_tyeps = [self.page,self.variant,self.info,self.token,self.masked]
+        self.file_tyeps = [self.page,self.variant,self.info,self.token,self.masked]
 
         self.page_split_params = ' '
         self.tail = dict({
@@ -71,13 +71,17 @@ class VCFpageNLP:
         })
         pass
     
-    def get_file_path(self,output_prefix:str,file_type:str,region:int,batch:int)->str:
-        assert file_type in self.__file_tyeps, 'type must be in this list [{}]'.format(', '.join(self.__file_tyeps))
+    def get_file_path(self,output_prefix:str,file_type:str,region:int=0,batch:int=0)->str:
+        assert file_type in self.file_tyeps, 'type must be in this list [{}]'.format(', '.join(self.file_tyeps))
         return output_prefix+'.r{0:04d}.b{1:04d}'.format(region,batch)+ self.tail.get(file_type)
     
     def get_file_path_from_page(self,path:str,file_type:str,detail_name:str='')->str:
-        assert file_type in self.__file_tyeps, 'type must be in this list [{}]'.format(', '.join(self.__file_tyeps))
+        assert file_type in self.file_tyeps, 'type must be in this list [{}]'.format(', '.join(self.file_tyeps))
         assert path.endswith(self.tail[self.page]), "Must be page type data"
+        if file_type == self.variant:
+            temps = path.split('.')
+            temps[-3] = 'b0000'
+            path = '.'.join(temps)
         return path.replace(self.tail[self.page],detail_name+ self.tail[file_type])
     
     def token_masked_to_json(self,data:dict,path:str)->None:
