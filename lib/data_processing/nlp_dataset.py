@@ -1,4 +1,3 @@
-from keras.backend import shape
 import torch
 from torch.utils.data.dataset import Dataset
 import typing
@@ -29,39 +28,37 @@ def token_default_dict(tokenizer:PreTrainedTokenizer):
 
 class GenNLPMaskedDataset(Dataset):
     """Genotype data to nlp load"""
-    def __init__(self,document_paths:typing.List[str],tokenizer:PreTrainedTokenizer,seed=42,masked_per=0.9,masked_by_flag=False) -> None:
+    def __init__(self,document_paths:typing.List[str],tokenizer:PreTrainedTokenizer,seed=42,masked_per=0.9,masked_by_flag=False,only_input=False,force_create=False) -> None:
         super().__init__()
         self.rand = np.random
         self.rand.seed(seed=seed)
-        self.tokenizer = tokenizer
-        # inputs = tokenizer(masked_data,return_tensors='pt')
-        # labels = tokenizer(gtruth_data,return_tensors='pt')['input_ids']
-        self.labels = []
         self.input_ids = "input_ids"
         self.token_type_ids = "token_type_ids"
         self.attention_mask = "attention_mask"
-        self.maskeds=token_default_dict(self.tokenizer)
+        self.labels = []        
+        self.maskeds=token_default_dict(tokenizer)
         # reading and save data
         for i, dpath in enumerate(tqdm(document_paths,desc="preprocess data from document")):
             token_file = page_config.get_file_path_from_page(dpath,page_config.token)
             masked_file = page_config.get_file_path_from_page(dpath,page_config.masked,'.s'+str(seed))
             labels = []
-            maskeds = token_default_dict(self.tokenizer)
+            maskeds = token_default_dict(tokenizer)
             masked_indexs = None
             if masked_by_flag:
                 variant_path = page_config.get_file_path_from_page(dpath,page_config.variant)
-                variant_df = pd.read_csv(variant_path)
-                masked_indexs = np.where(variant_df[vzconfig.flag].values == int(legend_config.observe))[0]
+                variant_df = pd.read_csv(variant_path,sep=page_config.page_split_params)
+                masked_indexs = np.where(variant_df[vzconfig.flag].values != int(legend_config.observe))[0]
+                masked_indexs = masked_indexs + 1
             if os.path.isfile(token_file):
                 with g.reading(token_file) as tokenf:
                     # use masked variable as temp token variable
                     maskeds = json.load(tokenf)
                     labels = maskeds[self.input_ids].copy()
-                if os.path.isfile(masked_file):
+                if not force_create and os.path.isfile(masked_file):
                     with g.reading(masked_file) as maskedf:
                         maskeds = json.load(maskedf)
                 else:
-                    maskeds[self.input_ids] = [masked_token(self.rand,label,self.tokenizer.mask_token_id,masked_per,masked_indexs) for label in labels]
+                    maskeds[self.input_ids] = [masked_token(self.rand,label,tokenizer.mask_token_id,masked_per,masked_indexs) for label in labels]
                     page_config.token_masked_to_json(maskeds,masked_file)
             else:
                 with g.reading(dpath) as temp_doc:
@@ -69,19 +66,23 @@ class GenNLPMaskedDataset(Dataset):
                         if line == '\n':
                             continue
                         # tokenizer data
-                        data = self.tokenizer(line)
+                        data = tokenizer(line)
                         # copy true data to label data
                         label = data[self.input_ids].copy()
                         labels.append(label)
                         # masked input data from data
-                        data[self.input_ids] = masked_token(self.rand,label,self.tokenizer.mask_token_id,masked_per,masked_indexs)
+                        data[self.input_ids] = masked_token(self.rand,label,tokenizer.mask_token_id,masked_per,masked_indexs)
                         # append data to dataset
                         [maskeds[key].append(val) for key, val in data.items()]
                 page_config.token_masked_to_json(maskeds,masked_file)
                 page_config.token_masked_to_json({**maskeds,**{self.input_ids:labels}},token_file)
             # append data to this data
             self.labels.extend(labels)
-            [self.maskeds[key].extend(val) for key, val in maskeds.items()]                        
+            for key, val in maskeds.items():
+                # If key not is input property and param only_input is true it will ignore that data
+                if only_input and key != self.input_ids:
+                    continue
+                self.maskeds[key].extend(val)
         # conver labels and masked data to tensor
         self.labels = torch.as_tensor(self.labels)
         for key, val in self.maskeds.items():

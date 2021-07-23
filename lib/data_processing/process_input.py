@@ -7,7 +7,7 @@ from posixpath import sep
 import sys
 import re
 import os
-from time import time
+from unicodedata import name
 from tqdm.notebook import tqdm
 import pandas as pd
 import numpy as np
@@ -19,7 +19,7 @@ from ..genhelper import vcf_helper as vhelper
 from ..genhelper.config_class import vcf_zarr_config as vzarrconfig
 import zarr
 import typing
-import types
+from multimethod import multimethod
 
 def complement_base(base):
     if base == 'A':
@@ -137,6 +137,31 @@ def parse_manifest(manifest_file:str, chr_nums: list, hg_refgenome:str)->dict:
         marker = parse_manifest_from_manifest(manifest_file,chr_nums,hg_refgenome)
     print('Create marker done!')
     return marker
+
+def parse_manifest_to_bcftools_targets_file(manifest_file:str, chr_nums: list, hg_refgenome:str,targets_file:str)->None:
+    marker = parse_manifest(manifest_file,chr_nums,hg_refgenome)
+    lines = []
+    with g.reading(targets_file) as tf:
+        lines.extend(tf.readlines())
+    with g.writing(targets_file) as tf:
+        for line in lines:
+            items = line.split('\t')
+            chrm = items[0]
+            pos = items[1]
+            vcfales = items[2].split(',')
+            if chrm in marker and pos in marker[chrm]:
+                for ales in marker[chrm][pos]:
+                    if ales[0] == vcfales[0] and vcfales[1] in ales:
+                        tf.write(line)
+        # tftsv = csv.writer(tf,delimiter='\t')
+        # for chr, pos_dict in tqdm(marker.items(),"process chrom"):
+        #     for pos, data in tqdm(pos_dict.items(),"process position",leave=False):
+        #         for ales in data:
+        #             tftsv.writerow([chr,pos,','.join(ales)])
+        #             # line = '  '.join([chr,pos,','.join(ales)])+'\n'
+        #             # tf.write(line)
+    print("Convert done!")
+    pass
 
 def mapping_marker(chrom, position, ref, alts:list, marker_dict):
     flag = legend_config.unobserve
@@ -585,23 +610,26 @@ def process_data_to_legend(vcf_file, manifest_file, hg_refgenome, chroms, output
         output_prefix)
     print('\nprepare data from vcf done!\n')
 
-def process_vcf_to_page_nlp(vcf_file:str,inter_vcfs:typing.List[str],af_source:int,ouput_prefix:str,nb_region:int=1,nb_batch:int=1,manifest_file:str=None,hg_refgenome:str=None):
-    nb_vcf = len(inter_vcfs)
+def parse_data_to_process_nlp(
+        vcf_file:str,
+        inter_vcfs:typing.List[str],
+        af_source:int
+    ):
+    nb_vcf = 0 if inter_vcfs is None else len(inter_vcfs)
     assert af_source <= nb_vcf, "af_source must be in range [0, {}]".format(nb_vcf)
     zarr_path = vhelper.vcf_to_zarr(vcf_file,False)
-    inter_paths = []
-    for inter_vcf in inter_vcfs:
-        inter_path = vhelper.vcf_to_zarr(inter_vcf,False)
-        inter_paths.append(inter_path)    
-    callsets = [zarr.open_group(zarr_path),*list(map(zarr.open_group,inter_paths))]
+    callsets = [zarr.open_group(zarr_path)]
+    if inter_vcfs is not None:
+        inter_paths = []
+        for inter_vcf in inter_vcfs:
+            inter_path = vhelper.vcf_to_zarr(inter_vcf,False)
+            inter_paths.append(inter_path)
+        callsets.extend(list(map(zarr.open_group,inter_paths)))
+        # callsets = [*callsets,*list(map(zarr.open_group,inter_paths))]
     samples = callsets[0].samples[:]
-    nb_samples = len(samples)
-    assert not (nb_batch > 1 and nb_batch < (nb_samples/2) and (nb_samples % nb_batch >=50)), "batch size must lower than nb samples div 2 and min number samples each batch is 50"
     # create variant file
     print("Creating .variant.gz file!")
     df_variant_ids = vhelper.get_dataframe_variant_id([callset.variants for callset in callsets])
-    nb_variants = len(df_variant_ids)
-    assert not (nb_region > 1 and (nb_variants/nb_region > 10000) and (nb_variants % nb_region > 6000)), "batch size must lower than nb samples div 2"
     afs = callsets[af_source].variants.AF[:,0]
     af_source_indexs = df_variant_ids[vzarrconfig.get_index_col(af_source)].values
     df_variant_ids['af'] = afs[af_source_indexs]
@@ -612,30 +640,96 @@ def process_vcf_to_page_nlp(vcf_file:str,inter_vcfs:typing.List[str],af_source:i
     gt = gt.reshape((gt.shape[0],gt.shape[1]*2))
     gt = gt.T
     print("Done!")
-    nb_region_elements = nb_variants // nb_region
-    nb_batch_samples = nb_samples // nb_batch
+    df_variant_ids.drop(columns=[vzarrconfig.get_index_col(i) for i in range(len(callsets))],inplace=True)
+    df_variant_ids = df_variant_ids.astype({vzarrconfig.position:np.uint64})
+    return samples, df_variant_ids, gt
+
+def __check_rb_process_vcf_to_page_nlp(data, name):
+    assert type(data) == int or type(data) == list, "{} must be int or list int or list file path".format(name)
+
+def __get_value_by_type(batchs,nb_data):
+    if type(batchs) == int:
+        return np.full(batchs,nb_data//batchs).tolist()
+    elif type(batchs) == list:
+        assert np.all(np.array(list(map(type,batchs))) == int) or np.all(np.array(list(map(type,batchs))) == str), "{} must be list str or list int".format(name)
+        return batchs
+    assert False, "div info must be int or list"
+
+def get_element_indexs_each_batch(i,batchs,df_data:pd.DataFrame,type_data=str,sep=' '):
+    assert type_data in page_config.file_types, "must be in type [{}]".format(', '.join(page_config.file_types))
+    temp = df_data.copy()
+    index_col = '__index'
+    temp[index_col] = np.arange(temp.shape[0])
+    batch = batchs[i]
+    if type(batch) == int:
+        start_index = sum(batchs[:i])
+        end_index = start_index + batch        
+        if end_index > temp.shape[0]:
+            end_index = temp.shape[0]
+        data_indexs = np.arange(start_index,end_index)
+        merged = df_data.iloc[data_indexs].copy()
+        if type_data == page_config.info:
+            start_index = start_index*2
+            end_index = end_index*2
+            data_indexs = np.arange(start_index,end_index)
+        data_indexs = data_indexs.tolist()
+        return data_indexs, merged
+    elif type(batch) == str and os.path.isfile(batch):
+        merge_data = pd.read_csv(batch,sep=sep)
+        merge_data = merge_data.astype({vzarrconfig.chrom:str,vzarrconfig.position:np.uint64,vzarrconfig.flag:np.uint8})
+        if type_data == page_config.variant:
+            merged = vhelper.merge_df_variant_id(temp,merge_data)
+            data_indexs = merged[index_col].values
+        elif type_data == page_config.info:
+            merged = pd.merge(temp,merge_data,how='inner',on=[page_config.info])
+            data_indexs = np.array([merged[index_col].values*2,merged[index_col].values*2+1]).flatten('F')
+        count_fail = merge_data.shape[0]-merged.shape[0]
+        if count_fail > 0:
+            print('Region {} cant matching {} position data'.format(i,count_fail))
+        merged.drop(columns=[index_col],inplace=True)
+        data_indexs = data_indexs.tolist()
+        return data_indexs, merged
+    assert False, "func get_element_indexs_each_batch params error"
+
+def process_vcf_to_page_nlp(
+        vcf_file:str,
+        inter_vcfs:typing.List[str],
+        af_source:int,
+        ouput_prefix:str,
+        regions=1,
+        batchs=1,
+        manifest_file:str=None,
+        hg_refgenome:str=None,
+        sep=' '
+    ):
+    __check_rb_process_vcf_to_page_nlp(regions,'regions')
+    __check_rb_process_vcf_to_page_nlp(batchs,'batchs')
+    samples, df_variant_ids, gt = parse_data_to_process_nlp(vcf_file,inter_vcfs,af_source)
+    nb_variants = len(df_variant_ids)
+    nb_samples = len(samples)
+    df_samples = pd.DataFrame({page_config.info:samples})
+    samples = np.array(samples)
+
+    regions = __get_value_by_type(regions,nb_variants)
+    batchs = __get_value_by_type(batchs,nb_samples)
+    nb_regions = len(regions)
+    nb_batchs = len(batchs)
+    # create data    
     variant_paths = []
-    for i in tqdm(range(nb_region),desc="Create region data"):
-        sreg = i*nb_region_elements
-        ereg = i+1 if i < nb_region -1 else i+2
-        ereg = ereg*nb_region_elements
-        temp_variant_ids = df_variant_ids.iloc[sreg:ereg]
+    for i in tqdm(range(nb_regions),desc="Create region data"):
+        variant_indexs, region_info = get_element_indexs_each_batch(i,regions,df_variant_ids,page_config.variant,sep=sep)
         # create variant id only one time all sample
         variant_path = page_config.get_file_path(ouput_prefix,page_config.variant,i)
         variant_paths.append(variant_path)
-        temp_variant_ids.to_csv(variant_path,index=False)
-        for j in tqdm(range(nb_batch),desc="Create batch data of region {}".format(i),leave=False):
-            sbch = j*nb_batch_samples*2
-            ebch = j+1 if j < nb_batch -1 else j+2
-            ebch = ebch*nb_batch_samples*2
+        region_info.to_csv(variant_path,index=False,sep=page_config.page_split_params)
+        for j in tqdm(range(nb_batchs),desc="Create batch data of region {}".format(i),leave=False):
+            sample_indexs, sample_info = get_element_indexs_each_batch(j,batchs,df_samples,page_config.info)
             # create sample file info only one time
             if i == 0:
                 info_path = page_config.get_file_path(ouput_prefix,page_config.info,i,j)
-                with g.writing(info_path) as ifile:
-                    temp_samples = samples[sbch:ebch]
-                    line = ' '.join(temp_samples)
-                    ifile.write(line)
-            temp_gt = gt[sbch:ebch,sreg:ereg]
+                sample_info.to_csv(info_path,index=False,sep=page_config.page_split_params)
+            temp_gt = gt[sample_indexs]
+            temp_gt = temp_gt[:,variant_indexs]
             # create page file
             page_path = page_config.get_file_path(ouput_prefix,page_config.page,i,j)
             with g.writing(page_path) as pf:

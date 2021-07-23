@@ -67,6 +67,12 @@ wget http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/data_collections/1000_genomes_pro
 
 ## Sub data
 
+**hg19.fa.gz** from [reference genome hg19](https://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/)
+
+```script
+wget https://hgdownload.soe.ucsc.edu/goldenPath/hg19/bigZips/hg19.fa.gz -O ./data/raw/hg19.fa.gz
+```
+
 **G1K_chr22_hg38.vcf.gz** can liftover from **G1K_chr22_hs37d5.vcf.gz**.
 
 **G1K_chr22_hs37d5.vcf.gz** from [Data project 1000 genomes](http://ftp.1000genomes.ebi.ac.uk/vol1/ftp/release/20130502/). Download file **ALL.chr22.phase3_shapeit2_mvncall_integrated_v5b.20130502.genotypes.vcf.gz**[1] or phase3 vcf file about chr22 if file [1] not exits and change it name to **G1K_chr22_hs37d5.vcf.gz**. Or run this script:
