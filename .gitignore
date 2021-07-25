@@ -30,3 +30,6 @@ rnnimp/
 **.page.txt
 **.stats
 temp/
+checkpoints/
+logs/
+data/train/electra_G1K_22_hs37d5/data_dir/model

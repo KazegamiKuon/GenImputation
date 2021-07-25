@@ -12,6 +12,7 @@ import os
 import json
 import pandas as pd
 from ..genhelper.config_class import vcf_zarr_config as vzconfig
+from multimethod import multimethod
 
 def masked_token(rand,tokens:typing.List[int],masked_value:int,masked_per=0.9,masked_indexs=None)->str:
     nb_elements = len(tokens)-2
@@ -28,6 +29,11 @@ def token_default_dict(tokenizer:PreTrainedTokenizer):
 
 class GenNLPMaskedDataset(Dataset):
     """Genotype data to nlp load"""
+    @multimethod
+    def __init__(self) -> None:
+        super().__init__()
+
+    @multimethod
     def __init__(self,document_paths:typing.List[str],tokenizer:PreTrainedTokenizer,seed=42,masked_per=0.9,masked_by_flag=False,only_input=False,force_create=False) -> None:
         super().__init__()
         self.rand = np.random

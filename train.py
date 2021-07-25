@@ -31,10 +31,16 @@ modeling_args = ElectraConfig(**config[page_config.model_args])
 tokenizer = ElectraTokenizer(vocab_file=vocab_file)
 seed = training_args.seed
 
+detail = '_nopretrain'
+
 for i, region in enumerate(regions):
     clear_output(wait=True)
-    save_path = save_dir.format(region)
-    prevert_path = save_dir.format(region-1)
+    print('Region {} trainning...'.format(region))
+    save_path = save_dir.format(region)+detail
+    prevert_path = save_dir.format(region-1)+detail
+    training_args.output_dir = output_dir.format(region)+detail
+    training_args.logging_dir = logging_dir.format(region)+detail
+    training_args.num_cycles = 2
     ## Train and eval data
     train_batch_paths = train_region_paths[i]
     train_dataset = GenNLPMaskedDataset(
@@ -50,12 +56,11 @@ for i, region in enumerate(regions):
     test_dataset = GenNLPMaskedDataset(test_batch_paths,tokenizer,seed=seed,masked_by_flag=True,only_input=True)
     ## model
     modeling_args.vocab_size = tokenizer.vocab_size
-    modeling_args.max_position_embeddings = 1300
+    # modeling_args.max_position_embeddings = 1300
+    modeling_args.max_position_embeddings = train_dataset.max_position_embeddings()
     electra_model = ElectraForMaskedLM(modeling_args)
-    if os.path.isdir(prevert_path):
-        electra_model = ElectraForMaskedLM.from_pretrained(prevert_path)
-    training_args.output_dir = output_dir.format(region)
-    training_args.logging_dir = logging_dir.format(region)
+    # if os.path.isdir(prevert_path):
+    #     electra_model = ElectraForMaskedLM.from_pretrained(prevert_path)    
     trainer = OTrainer(
         model = electra_model,
         args=training_args,
