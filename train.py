@@ -16,8 +16,9 @@ from typing import List
 
 # config_path = '/client/user1/cuongdev/GenImputation/data/train/electra_G1K_22_hs37d5/config.json'
 # config_path = '/client/user1/cuongdev/GenImputation/data/train/electra_G1K_22_hs37d5/config_demo_r9.json'
-config_path = '/client/user1/cuongdev/GenImputation/data/train/electra_G1K_22_hs37d5/config_demo_r9_same_length.json'
+# config_path = '/client/user1/cuongdev/GenImputation/data/train/electra_G1K_22_hs37d5/config_demo_r9_same_length.json'
 # config_path = '/client/user1/cuongdev/GenImputation/data/train/electra_G1K_22_hs37d5/config_demo_r3.json'
+config_path = '/client/user1/cuongdev/GenImputation/data/train/electra_G1K_22_hs37d5/config_demo_r9_e64.json'
 
 config = None
 with g.reading(config_path) as cf:

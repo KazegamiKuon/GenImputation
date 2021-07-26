@@ -31,10 +31,10 @@
         "metric_for_best_model":"R2 score VS"
     },
     "model_args": {
-        "embedding_size": 64,
-        "hidden_size": 128,
+        "embedding_size": 128,
+        "hidden_size": 256,
         "position_embedding_type": "relative_key",
-        "num_hidden_layers": 2,
+        "num_hidden_layers": 1,
         "output_hidden_states": false,
         "output_attentions": false
     }
