@@ -12,3 +12,7 @@ model                   - all model AI you created must be here.
 |   experiment.ipynb    - file to test own model
 └───README.md           - description about this folder and its file. This folder structure check at here too
 ```
+
+## Description
+
+[Electra model](https://github.com/google-research/electra.git) power by google research

@@ -37,27 +37,35 @@ test
 
 ## Description
 
+Script must be run at root folder
+
 **3 script below** create input and gtruth for minimac 4 impute
 
 **Declare variable:**
 
 ```script
-source="./data/interim/G1K_chr20_biallelic.vcf.gz"
-gtruth="./data/test/G1K_chr20_biallelic_gtruth.vcf.gz"
+source="data/interim/to_biallelic/G1K_chr22_hs37d5_biallelic.vcf.gz"
+test="data/test/G1K_chr22_hs37d5_biallelic_test.vcf.gz"
+test2="data/test/G1K_22_hs37d5_biallelic_test.vcf.gz"
+sample="data/external/test_100_samples.txt"
+chrm_map="./data/raw/chrs_name_map_file_chr_to_num.txt"
 input="./data/test/G1K_chr20_biallelic_input.vcf.gz"
 dir_input="./data/test/G1K_chr20_biallelic_input"
 dir_input_file="./data/test/G1K_chr20_biallelic_input/0000.vcf.gz"
 genotype="This is path of genotype vcf file to exstract that position from gtruth"
-sample="./data/external/test_100_samples.txt"
+
 train="./data/train/G1K_chr20_biallelic_train.m3vcf.gz"
 predict_prefix="./data/test/G1K_chr22_biallelic_predict"
 ```
 
-**G1K_chr20_biallelic_gtruth.vcf.gz** file was created by this script at root project:
+**G1K_chr22_hs37d5_biallelic_test.vcf.gz** file was created by this script:
 
 ```script
-bcftools view $source -o $gtruth -O z -S $sample
+bcftools view $source -o $test -O z -S $sample
+bcftools index $test
 ```
+
+bcftools annotate $test --rename-chrs $chrm_map -o $test2 -O z
 
 **G1K_chr20_biallelic_input.vcf.gz** file was created by this script at root project:
 
