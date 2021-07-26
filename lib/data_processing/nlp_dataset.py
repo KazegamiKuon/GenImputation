@@ -34,7 +34,7 @@ class GenNLPMaskedDataset(Dataset):
         super().__init__()
 
     @multimethod
-    def __init__(self,document_paths:typing.List[str],tokenizer:PreTrainedTokenizer,seed=42,masked_per=0.9,masked_by_flag=False,only_input=False,force_create=False) -> None:
+    def __init__(self,document_paths:typing.List[str],tokenizer:PreTrainedTokenizer,seed=42,masked_per=0.9,masked_by_flag=False,only_input=False,force_create=False,masked_flag_random=False) -> None:
         super().__init__()
         self.rand = np.random
         self.rand.seed(seed=seed)
@@ -55,6 +55,8 @@ class GenNLPMaskedDataset(Dataset):
                 variant_df = pd.read_csv(variant_path,sep=page_config.page_split_params)
                 masked_indexs = np.where(variant_df[vzconfig.flag].values != int(legend_config.observe))[0]
                 masked_indexs = masked_indexs + 1
+                if masked_flag_random:
+                    masked_indexs = self.rand.permutation(variant_df.shape[0])[:len(masked_indexs)]+1
             if os.path.isfile(token_file):
                 with g.reading(token_file) as tokenf:
                     # use masked variable as temp token variable

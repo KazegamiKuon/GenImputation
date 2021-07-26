@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from typing import Optional
-from transformers import Trainer, TrainingArguments, get_cosine_with_hard_restarts_schedule_with_warmup
+from transformers import Trainer, TrainingArguments, get_cosine_with_hard_restarts_schedule_with_warmup, get_scheduler
 
 @dataclass
 class OTrainingArguments(TrainingArguments):
@@ -26,9 +26,10 @@ class OTrainer(Trainer):
         Args:
             num_training_steps (int): The number of training steps to do.
         """
-        self.lr_scheduler = get_cosine_with_hard_restarts_schedule_with_warmup(
-            self.optimizer,
-            num_warmup_steps=self.args.warmup_steps,
-            num_training_steps=num_training_steps,
-            num_cycles = self.args.num_cycles
-        )
+        if self.lr_scheduler is None:
+            self.lr_scheduler = get_cosine_with_hard_restarts_schedule_with_warmup(
+                self.optimizer,
+                num_warmup_steps=self.args.warmup_steps,
+                num_training_steps=num_training_steps,
+                num_cycles = self.args.num_cycles
+            )
