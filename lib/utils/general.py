@@ -7,11 +7,12 @@ import pandas as pd
 import numpy as np
 import subprocess
 import shutil
+import types
 
 def walk_forward(walker):
     return next(walker,False)
 
-def get_group_file(root,ftype=None,walk_step=0,key=None):
+def get_group_file(root,ftype:str=None,walk_step=0,key:types.FunctionType =None):
     dir_walker = os.walk(root)
     if key is None:
         key = lambda x: x.split('_')[:-1]
@@ -23,6 +24,10 @@ def get_group_file(root,ftype=None,walk_step=0,key=None):
     while (walker_location is not False and walker_step <= walk_step):
         r, dirs, files = walker_location
         file_paths = [os.path.join(r,f) for f in files]
+        if ftype is not None:
+            file_paths = [file_path for file_path in file_paths  if file_path.endswith(ftype)]
+        if len(file_paths) == 0:
+            continue
         file_paths = sorted(file_paths)
         groups.append(groupby(file_paths,key))
         walker_location = walk_forward(dir_walker)

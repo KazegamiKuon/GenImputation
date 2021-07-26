@@ -1,0 +1,41 @@
+{
+    "mode":"pretrain",
+    "regions":[9],
+    "batchs":[0,1,2,3,4,5,6,7,8],
+    "model_name":"",
+    "save_dir":"/client/user1/cuongdev/GenImputation/data/train/electra_G1K_22_hs37d5/data_dir/model/region{:04d}",
+    "vocab_file":"/client/user1/cuongdev/GenImputation/data/train/electra_G1K_22_hs37d5/data_dir/vocab.txt",
+    "file_train_prefix":"/client/user1/cuongdev/GenImputation/data/train/electra_G1K_22_hs37d5/corpus_dir/G1K_22_hs37d5_biallelic_train",
+    "file_test_prefix":"/client/user1/cuongdev/GenImputation/data/test/electra_G1K_22_hs37d5/corpus_dir/G1K_22_hs37d5_biallelic_test",
+    "train_args": {
+        "output_dir": "/client/user1/cuongdev/GenImputation/data/train/electra_G1K_22_hs37d5/checkpoints/region{:04d}",
+        "logging_dir": "/client/user1/cuongdev/GenImputation/data/train/electra_G1K_22_hs37d5/logs/region{:04d}",
+        "do_train": true,
+        "do_eval": false,
+        "do_predict": false,
+        "evaluation_strategy": "epoch",
+        "save_strategy": "epoch",
+        "logging_strategy": "epoch",
+        "save_total_limit":1,
+        "learning_rate": 0.0005,
+        "weight_decay": 0.01,
+        "num_train_epochs": 120,
+        "no_cuda": false,
+        "seed": 42,
+        "run_name": "cuongdev_electra",
+        "per_device_train_batch_size": 32,
+        "per_device_eval_batch_size": 32,
+        "load_best_model_at_end": true,
+        "warmup_steps": 32,
+        "num_cycles":3,
+        "metric_for_best_model":"R2 score VS"
+    },
+    "model_args": {
+        "embedding_size": 128,
+        "hidden_size": 256,
+        "position_embedding_type": "relative_key",
+        "num_hidden_layers": 2,
+        "output_hidden_states": false,
+        "output_attentions": false
+    }
+}

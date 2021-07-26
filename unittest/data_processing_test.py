@@ -1,3 +1,4 @@
+import json
 import sys
 import pandas as pd
 from lib.utils import general as g
@@ -5,6 +6,14 @@ import os
 import unittest
 import numpy as np
 from lib.data_processing import process_input as pi
+from lib.data_processing import GenNLPMaskedDataset
+from lib.config.config_class import page_config
+import sys
+from transformers import ElectraTokenizer, ElectraConfig, Trainer, TrainingArguments
+from transformers import EncoderDecoderModel, EncoderDecoderConfig
+from lib.model.electra import ElectraEmbeddings, ElectraForMaskedLM
+import torch
+import numpy as np
 
 class DataProcessingTest(unittest.TestCase):
     def __init__(self, methodName: str) -> None:
@@ -20,6 +29,20 @@ class DataProcessingTest(unittest.TestCase):
         self.region_folder = '/home/cuong/VBDI/HungProject/GenImputation/data/interim/region'
         self.output_folder = '/home/cuong/VBDI/HungProject/GenImputation/data/train'
         self.default_config = '/home/cuong/VBDI/HungProject/GenImputation/data/external/region_default_config.json'
+        #### test nlp process
+        self.vcf_inter_files = None
+        self.vcf_file_g1k_train = '/client/user1/cuongdev/GenImputation/data/train/G1K_22_hs37d5_biallelic_train.vcf.gz'
+        self.nlp_train_prefix = '/client/user1/cuongdev/GenImputation/data/train/electra_G1K_22_hs37d5/corpus_dir/G1K_22_hs37d5_biallelic_train'
+        ####
+        self.vocab_file = '/client/user1/cuongdev/GenImputation/data/train/electra/data_dir/vocab.txt'
+        self.train_paths = [
+            '/client/user1/cuongdev/GenImputation/data/train/electra/corpus_dir/G1K_VN_chr20_biallelic_train.r0000.b0000.page.gz',
+            '/client/user1/cuongdev/GenImputation/data/train/electra/corpus_dir/G1K_VN_chr20_biallelic_train.r0000.b0001.page.gz',
+            '/client/user1/cuongdev/GenImputation/data/train/electra/corpus_dir/G1K_VN_chr20_biallelic_train.r0000.b0002.page.gz'
+        ]
+        self.eval_paths = [
+            '/client/user1/cuongdev/GenImputation/data/train/electra/corpus_dir/G1K_VN_chr20_biallelic_train.r0000.b0003.page.gz'
+        ]
 
     # def test_plot_r2_by_maf(self):
     #     #params
@@ -75,25 +98,152 @@ class DataProcessingTest(unittest.TestCase):
     #     labels, r2_dict = po.plot_r2_by_maf(mafs,y_true,{'paper':y_paper_pred,'own':y_me_pred})
     #     print('')
     
-    def test_process_data(self):
-        pi.process_data_to_legend(self.vcf_file,self.manifest_file,self.hg_fasta_file,self.chroms,self.my_output_prefix)
+    # def test_process_data(self):
+    #     pi.process_data_to_legend(self.vcf_file,self.manifest_file,self.hg_fasta_file,self.chroms,self.my_output_prefix)
     
-    def test_legend_to_region(self):
-        # pi.legend_to_region(self.legend_file,self.hap_file,100,0.1,True,output_folder=self.output_folder)
-        pi.legend_to_region(self.legend_file,self.hap_file,100,0.1,True)
+    # def test_legend_to_region(self):
+    #     # pi.legend_to_region(self.legend_file,self.hap_file,100,0.1,True,output_folder=self.output_folder)
+    #     pi.process_legend_to_region(self.legend_file,self.hap_file,100,0.1,True)
     
-    def test_region_config(self):
-        pi.make_region_config(self.region_folder,self.default_config)
-    # def test_genotyping_vcf(self):
-    #     pi.genotyping_vcf(self.vcf_file,self.manifest_file,self.hg_fasta_file,self.my_output_prefix,self.chroms)
+    # def test_region_config(self):
+    #     pi.process_region_config(self.region_folder,self.default_config)
+    # # def test_genotyping_vcf(self):
+    # #     pi.genotyping_vcf(self.vcf_file,self.manifest_file,self.hg_fasta_file,self.my_output_prefix,self.chroms)
     
-    def test_ssh_config(self):
-        manifest_file = "/client/user1/data_imputation_vn/APMRA96_chr20_for_imputation_chr20_AF.vcf.gz"
-        vcf_file = "/client/user1/data_imputation_vn/ref1014_chr20_for_imputation_chr20_AF.vcf.gz"
-        fasta_file = "/client/user1/cuongdev/GenImputation/data/raw/hg38.fa.gz"
-        chroms = ['chr20']
-        ouput_prefix = '/client/user1/cuongdev/GenImputation/data/interim/ref1014_chr20_hg38'
-        pi.process_data_to_legend(vcf_file,manifest_file,fasta_file,chroms,ouput_prefix)
+    # def test_ssh_config(self):
+    #     manifest_file = "/client/user1/data_imputation_vn/APMRA96_chr20_for_imputation_chr20_AF.vcf.gz"
+    #     vcf_file = "/client/user1/data_imputation_vn/ref1014_chr20_for_imputation_chr20_AF.vcf.gz"
+    #     fasta_file = "/client/user1/cuongdev/GenImputation/data/raw/hg38.fa.gz"
+    #     chroms = ['chr20']
+    #     ouput_prefix = '/client/user1/cuongdev/GenImputation/data/interim/ref1014_chr20_hg38'
+    #     pi.process_data_to_legend(vcf_file,manifest_file,fasta_file,chroms,ouput_prefix)
+    
+    def test_page(self):
+        region_info = '/client/user1/cuongdev/GenImputation/data/external/region_info'
+        region_paths = page_config.get_file_paths_in_dir(region_info,page_config.variant)
+        
+        pi.process_vcf_to_page_nlp(
+            vcf_file=self.vcf_file_g1k_train,
+            inter_vcfs=self.vcf_inter_files,
+            af_source=0,
+            ouput_prefix=self.nlp_train_prefix+'temp',
+            regions=region_paths,
+            batchs=9            
+        )
+    
+    def test_nlp_dataset(self):
+        train_dataset = GenNLPMaskedDataset(self.train_paths,self.vocab_file,seed=42)
+        pass
+
+    def test_electra(self):
+        vocab_file = '/client/user1/cuongdev/GenImputation/data/train/electra/data_dir/vocab.txt'
+        train_paths = [
+            '/client/user1/cuongdev/GenImputation/data/train/electra/corpus_dir/G1K_VN_chr20_biallelic_train.r0000.b0000.page.gz',
+            '/client/user1/cuongdev/GenImputation/data/train/electra/corpus_dir/G1K_VN_chr20_biallelic_train.r0000.b0001.page.gz',
+            '/client/user1/cuongdev/GenImputation/data/train/electra/corpus_dir/G1K_VN_chr20_biallelic_train.r0000.b0002.page.gz'
+        ]
+        eval_paths = [
+            '/client/user1/cuongdev/GenImputation/data/train/electra/corpus_dir/G1K_VN_chr20_biallelic_train.r0000.b0003.page.gz'
+        ]
+        output_dir = '/client/user1/cuongdev/GenImputation/data/train/electra/checkpoints'
+        do_train = True
+        do_eval = True
+        do_predict = True
+        evaluation_stategy = 'epoch'
+        learning_rate=5e-5
+        weight_decay = 0
+        num_train_epochs = 20
+        lr_scheduler_type = "linear"
+        save_strategy = "epoch"
+        no_cuda = True
+        seed = 42
+        run_name = "cuongdev_electra"
+        per_device_train_batch_size=1
+        per_device_eval_batch_size=1
+        embedding_size = 16
+        hidden_size = 64
+        position_embedding_type =  'relative_key'
+        num_hidden_layers = 1
+        # data
+        train_dataset = GenNLPMaskedDataset(train_paths,vocab_file,seed=seed)
+        eval_dataset = GenNLPMaskedDataset(eval_paths,vocab_file,seed=seed)
+        # config
+        max_position_embeddings = train_dataset.max_position_embeddings()
+        config = ElectraConfig(
+            vocab_size=8,
+            max_position_embeddings=max_position_embeddings,
+            embedding_size = embedding_size ,
+            hidden_size = hidden_size,
+            position_embedding_type=position_embedding_type,
+            num_hidden_layers = num_hidden_layers
+        )
+        # config.return_dict = True
+        electra_model = ElectraForMaskedLM(config)
+        ### data
+        # data = train_dataset.__getitem__(0)
+        # data = {key: torch.unsqueeze(val,dim=0) for key, val in data.items()}
+        # temp_inputs = electra_model(**data)
+        ###
+        config = electra_model.config
+        train_args = TrainingArguments(
+            output_dir=output_dir,
+            do_train=do_train,
+            do_eval=do_eval,
+            do_predict=do_predict,
+            evaluation_strategy=evaluation_stategy,
+            learning_rate=learning_rate,
+            weight_decay=weight_decay,
+            num_train_epochs=num_train_epochs,
+            lr_scheduler_type=lr_scheduler_type,
+            save_strategy = save_strategy,
+            # save_steps=save_strategy,
+            no_cuda=no_cuda,
+            seed=seed,
+            run_name=run_name,
+            per_device_train_batch_size=per_device_train_batch_size,
+        )
+        trainer = Trainer(
+            model = electra_model,
+            args=train_args,
+            train_dataset=train_dataset,
+            eval_dataset = eval_dataset,
+        )
+        trainer.train()
+        pass
+
+    def test_how_model_run(self):
+        vocab_file = '/client/user1/cuongdev/GenImputation/data/train/electra/data_dir/vocab.txt'
+        train_paths = [
+            '/client/user1/cuongdev/GenImputation/data/train/electra/corpus_dir_2048/G1K_VN_chr20_biallelic_train.r0000.b0000.page.gz',
+            '/client/user1/cuongdev/GenImputation/data/train/electra/corpus_dir_2048/G1K_VN_chr20_biallelic_train.r0000.b0001.page.gz',
+            '/client/user1/cuongdev/GenImputation/data/train/electra/corpus_dir_2048/G1K_VN_chr20_biallelic_train.r0000.b0002.page.gz',
+            '/client/user1/cuongdev/GenImputation/data/train/electra/corpus_dir_2048/G1K_VN_chr20_biallelic_train.r0000.b0003.page.gz',
+            '/client/user1/cuongdev/GenImputation/data/train/electra/corpus_dir_2048/G1K_VN_chr20_biallelic_train.r0000.b0004.page.gz',
+            '/client/user1/cuongdev/GenImputation/data/train/electra/corpus_dir_2048/G1K_VN_chr20_biallelic_train.r0000.b0005.page.gz',
+        ]
+        eval_paths = [
+            '/client/user1/cuongdev/GenImputation/data/train/electra/corpus_dir_2048/G1K_VN_chr20_biallelic_train.r0000.b0007.page.gz'
+        ]
+        tokenizer = ElectraTokenizer(vocab_file=vocab_file)
+        eval_dataset = GenNLPMaskedDataset(eval_paths,tokenizer,seed=42,masked_per=0.15)
+        model = ElectraForMaskedLM.from_pretrained('/client/user1/cuongdev/GenImputation/data/train/electra/checkpoints/small_2048/checkpoint-8568')
+        output = model(**eval_dataset.__getitem__([0,1,2,3]))
+        # output = model(**{key: torch.unsqueeze(val,0) for key, val in eval_dataset.__getitem__([0,1,2,3]).items()})
+        pass
+    
+    def test_map_marker(self):
+        manifest = '/client/user1/cuongdev/GenImputation/data/interim/vn_data_private/manifest_vn.vcf.gz'
+        variant_paths = ['/client/user1/cuongdev/GenImputation/data/test/electra/corpus_dir_2048/G1K_VN_chr20_biallelic_test.r0000.b0000.variant.gz',
+        '/client/user1/cuongdev/GenImputation/data/test/electra/corpus_dir_2048/G1K_VN_chr20_biallelic_test.r0001.b0000.variant.gz']
+        hg_genome = '/client/user1/cuongdev/GenImputation/data/raw/hg38.fa.gz'
+        pi.process_map_manifest_to_variant_nlp(variant_paths,manifest,hg_genome)
+        pass
+
+    def test_masked_by_flag(self):
+        batch_paths = ['/client/user1/cuongdev/GenImputation/data/test/electra_G1K_22_hs37d5/corpus_dir/G1K_22_hs37d5_biallelic_test.r0000.b0000.page.gz']
+        tokenizer = ElectraTokenizer(vocab_file='/client/user1/cuongdev/GenImputation/data/train/electra_G1K_22_hs37d5/data_dir/vocab.txt')
+        test_dataset = GenNLPMaskedDataset(batch_paths,tokenizer,masked_by_flag=True,only_input=True)
+        pass
 
 if __name__ == '__main__':
     unittest.main()
