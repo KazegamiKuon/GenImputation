@@ -101,4 +101,13 @@ make
 sudo make install
 ```
 
+## Install [rnnimp](https://github.com/kanamekojima/rnnimp)
+
+```script
+git clone https://github.com/kanamekojima/rnnimp.git
+tar -xf ./rnnimp/rnnimp.tar.gz
+rm ./rnnimp/rnnimp.tar.gz
+```
+
+Run as readme at that project
 ## (coming soon)

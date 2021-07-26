@@ -1,2 +1,3 @@
-from .process_input import process_data_to_legend, process_genotyping_vcf, process_legend_to_region, process_region_config
+from .process_input import process_data_to_legend, process_genotyping_vcf, process_legend_to_region, process_region_config, process_vcf_to_page_nlp
 from .process_ouput import plot_r2_by_maf
+from .nlp_dataset import GenNLPMaskedDataset

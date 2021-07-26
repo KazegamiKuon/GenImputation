@@ -1,0 +1,34 @@
+{
+    "save_dir":"../../train/electra_G1K_22_hs37d5/data_dir/model/region{:04d}",
+    "vocab_file":"../../train/electra_G1K_22_hs37d5/data_dir/vocab.txt",
+    "file_page_prefix":"./corpus_dir/G1K_22_hs37d5_biallelic_test",
+    "train_args": {
+        "output_dir": "../../train/electra_G1K_22_hs37d5/checkpoints/region{:04d}",
+        "do_train": false,
+        "do_eval": false,
+        "do_predict": false,
+        "evaluation_strategy": "epoch",
+        "learning_rate": 0.0005,
+        "weight_decay": 0,
+        "num_train_epochs": 50,
+        "lr_scheduler_type": "linear",
+        "save_strategy": "epoch",
+        "no_cuda": true,
+        "seed": 42,
+        "run_name": "cuongdev_electra",
+        "per_device_train_batch_size": 16,
+        "per_device_eval_batch_size": 16,
+        "logging_strategy": "epoch",
+        "load_best_model_at_end": true,
+        "logging_dir": "../../train/electra_G1K_22_hs37d5/logs/region{:04d}",
+        "warmup_steps": 50
+    },
+    "model_args": {
+        "embedding_size": 64,
+        "hidden_size": 128,
+        "position_embedding_type": "relative_key",
+        "num_hidden_layers": 1,
+        "output_hidden_states": false,
+        "output_attentions": false
+    }
+}

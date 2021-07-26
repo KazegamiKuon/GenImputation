@@ -20,8 +20,16 @@ htslib*/
 bcftools*/
 data/test/rnn/
 data/train/region/
+rnnimp/
 **/**/**_private.*
 **/sample_info/
 **/*_private*/
 **/zarr/
 **.zarr/
+*electra/
+**.page.txt
+**.stats
+temp/
+checkpoints/
+logs/
+data/train/electra_G1K_22_hs37d5/data_dir/model

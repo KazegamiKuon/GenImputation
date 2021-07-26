@@ -34,22 +34,39 @@ minimac3 --refHaps <data path to train> --processReference --prefix <ouput name 
 
 ## For the impatient
 
-**Declare Variable**
+Data have chr22 or 22 mean #CHROM property is format chr**chrom name** or **chrom name**.
+
+**Declare Variable chr22 hs37d5**
 
 ```script
-data_source="./data/interim/G1K_chr20_biallelic.vcf.gz"
-train_prefix="./data/train/G1K_chr20_biallelic_train.vcf.gz"
+data_source="./data/interim/to_biallelic/G1K_chr22_hs37d5_biallelic.vcf.gz"
+train_prefix="./data/train/G1K_chr22_hs37d5_biallelic_train.vcf.gz"
 test_sample="./data/external/test_100_samples.txt"
-m3vcf_prefix="./data/train/G1K_chr20_biallelic_train"
+m3vcf_prefix="./data/train/G1K_chr22_hs37d5_biallelic_train"
 ```
 
-**G1K_chr20_biallelic_train.vcf.gz** file was created by this script at this folder:
+```
+chrm_map="data/raw/chrs_name_map_file_chr_to_num.txt"
+train_prefix_num="./data/train/G1K_22_hs37d5_biallelic_train.vcf.gz"
+```
+
+**<data_name>_train.vcf.gz** file was created by this script at this folder:
 
 ```script
 bcftools view $data_source -o $train_prefix -O z -S ^$test_sample
+bcftools index $train_prefix
 ```
 
-**G1K_chr20_biallelic_train.m3vcf.gz** file was created by this script at this folder:
+Connvert from chr**number** to **number**. 
+
+```script
+bcftools annotate $train_prefix --rename-chrs $chrm_map -o $train_prefix_num -O z
+m3vcf_prefix="./data/train/minimac/G1K_22_hs37d5_biallelic_train"
+train_prefix=$train_prefix_num
+bcftools index $train_prefix
+```
+
+**<data_name>_train.m3vcf.gz** file was created by this script at this folder:
 
 ```script
 minimac3 --refHaps $train_prefix --processReference --prefix $m3vcf_prefix
