@@ -1,25 +1,27 @@
 import torch
 from torch.utils.data.dataset import Dataset
 import typing
-from transformers import PreTrainedTokenizer, ElectraModel
+from transformers import PreTrainedTokenizer, ElectraModel, Trainer
 from tqdm.notebook import tqdm
 from ..utils import general as g
 import numpy as np
 # import time
 # import sys
-from ..config.config_class import page_config, legend_config
+from ..config.config_class import MaskedModeType, page_config, legend_config
 import os
 import json
 import pandas as pd
 from ..genhelper.config_class import vcf_zarr_config as vzconfig
 from multimethod import multimethod
 
-def masked_token(rand,tokens:typing.List[int],masked_value:int,masked_per=0.9,masked_indexs=None)->str:
+def masked_token(rand,tokens:typing.List[int],masked_value:int,masked_per=0.9,masked_indexs=None,masked_mode:MaskedModeType=MaskedModeType.NORMAL)->str:
     nb_elements = len(tokens)-2
     temp = np.asarray(tokens.copy())
     # get masked index by percent nb token data exclude start/end token
     if masked_indexs is None:
         masked_indexs = rand.permutation(nb_elements)[:int(nb_elements*masked_per)]+1
+    elif masked_mode == MaskedModeType.RANDOM and masked_indexs is not None:
+        masked_indexs = rand.permutation(nb_elements)[:int(len(masked_indexs))]+1
     temp[masked_indexs] = masked_value
     temp = temp.tolist()
     return temp
@@ -29,12 +31,12 @@ def token_default_dict(tokenizer:PreTrainedTokenizer):
 
 class GenNLPMaskedDataset(Dataset):
     """Genotype data to nlp load"""
-    @multimethod
-    def __init__(self) -> None:
-        super().__init__()
+    # @multimethod
+    # def __init__(self) -> None:
+    #     super().__init__()
 
-    @multimethod
-    def __init__(self,document_paths:typing.List[str],tokenizer:PreTrainedTokenizer,seed=42,masked_per=0.9,masked_by_flag=False,only_input=False,force_create=False,masked_flag_random=False) -> None:
+    # @multimethod
+    def __init__(self,document_paths:typing.List[str],tokenizer:PreTrainedTokenizer,seed=42,masked_per=0.9,masked_by_flag=False,only_input=False,force_create=False,masked_mode:MaskedModeType=MaskedModeType.NORMAL) -> None:
         super().__init__()
         self.rand = np.random
         self.rand.seed(seed=seed)
@@ -43,6 +45,8 @@ class GenNLPMaskedDataset(Dataset):
         self.attention_mask = "attention_mask"
         self.labels = []        
         self.maskeds=token_default_dict(tokenizer)
+        if masked_mode == MaskedModeType.RANDOM:
+            force_create = True
         # reading and save data
         for i, dpath in enumerate(tqdm(document_paths,desc="preprocess data from document")):
             token_file = page_config.get_file_path_from_page(dpath,page_config.token)
@@ -55,8 +59,6 @@ class GenNLPMaskedDataset(Dataset):
                 variant_df = pd.read_csv(variant_path,sep=page_config.page_split_params)
                 masked_indexs = np.where(variant_df[vzconfig.flag].values != int(legend_config.observe))[0]
                 masked_indexs = masked_indexs + 1
-                if masked_flag_random:
-                    masked_indexs = self.rand.permutation(variant_df.shape[0])[:len(masked_indexs)]+1
             if os.path.isfile(token_file):
                 with g.reading(token_file) as tokenf:
                     # use masked variable as temp token variable
@@ -66,7 +68,7 @@ class GenNLPMaskedDataset(Dataset):
                     with g.reading(masked_file) as maskedf:
                         maskeds = json.load(maskedf)
                 else:
-                    maskeds[self.input_ids] = [masked_token(self.rand,label,tokenizer.mask_token_id,masked_per,masked_indexs) for label in labels]
+                    maskeds[self.input_ids] = [masked_token(self.rand,label,tokenizer.mask_token_id,masked_per,masked_indexs,masked_mode=masked_mode) for label in labels]
                     page_config.token_masked_to_json(maskeds,masked_file)
             else:
                 with g.reading(dpath) as temp_doc:
@@ -79,7 +81,7 @@ class GenNLPMaskedDataset(Dataset):
                         label = data[self.input_ids].copy()
                         labels.append(label)
                         # masked input data from data
-                        data[self.input_ids] = masked_token(self.rand,label,tokenizer.mask_token_id,masked_per,masked_indexs)
+                        data[self.input_ids] = masked_token(self.rand,label,tokenizer.mask_token_id,masked_per,masked_indexs,masked_mode=masked_mode)
                         # append data to dataset
                         [maskeds[key].append(val) for key, val in data.items()]
                 page_config.token_masked_to_json(maskeds,masked_file)

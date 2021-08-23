@@ -1,9 +1,9 @@
 {
     "mode":"pretrain",
-    "masked_mode":"random",
     "regions":[9],
     "batchs":[0,1,2,3,4,5,6,7,8],
-    "model_name":"_pretrain_9_random_masked",
+    "model_name":"_pretrain_9_10",
+    "pretrain_path_format":"./data/train/electra_G1K_22_hs37d5/data_dir/model/region{:04d}_pretrain",
     "save_dir_format":"./data/train/electra_G1K_22_hs37d5/data_dir/model/region{:04d}",
     "output_dir_format": "./data/train/electra_G1K_22_hs37d5/checkpoints/region{:04d}",
     "logging_dir_format": "./data/train/electra_G1K_22_hs37d5/logs/region{:04d}",
@@ -28,8 +28,8 @@
         "per_device_eval_batch_size": 8,
         "load_best_model_at_end": true,
         "warmup_steps": 0,
-        "num_cycles":5,
-        "metric_for_best_model":"R2 score VS"
+        "num_cycles":10,
+        "metric_for_best_model":"R2 score pred"
     },
     "model_args": {
         "embedding_size": 128,

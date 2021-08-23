@@ -7,7 +7,7 @@ import unittest
 import numpy as np
 from lib.data_processing import process_input as pi
 from lib.data_processing import GenNLPMaskedDataset
-from lib.config.config_class import page_config
+from lib.config.config_class import page_config, cpconfig
 import sys
 from transformers import ElectraTokenizer, ElectraConfig, Trainer, TrainingArguments
 from transformers import EncoderDecoderModel, EncoderDecoderConfig
@@ -244,6 +244,9 @@ class DataProcessingTest(unittest.TestCase):
         tokenizer = ElectraTokenizer(vocab_file='/client/user1/cuongdev/GenImputation/data/train/electra_G1K_22_hs37d5/data_dir/vocab.txt')
         test_dataset = GenNLPMaskedDataset(batch_paths,tokenizer,masked_by_flag=True,only_input=True)
         pass
-
+    
+    def test_checkpoint_config(self):
+        data = cpconfig.get_checkpoint_data('/client/user1/cuongdev/GenImputation/data/train/electra_G1K_22_hs37d5/checkpoints/region0009_pretrain_9_03')
+        pass
 if __name__ == '__main__':
     unittest.main()

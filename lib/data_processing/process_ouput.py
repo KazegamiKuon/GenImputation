@@ -1,3 +1,5 @@
+from lib.config.config_class import CheckpointLogConfig, EvalLogHistory, ILogHistory, TrainLogHistory
+from typing import List, Optional
 from lib.genhelper import vcf_helper as vhelper
 import pandas as pd
 import os
@@ -115,5 +117,35 @@ def plot_label_and_dict(labels:list,data_dict:dict,title=""):
     xaxis = np.arange(len(labels))
     plt.xticks(ticks=xaxis,labels=labels)
     plt.title(title)
+    plt.legend()
+    plt.show()
+
+def plot_log_data(train_logs:List[List[ILogHistory]],att_names:List[str],names:List[str]=None,from_step:int=0,to_step:int=-1,figsize=(20,10),exclude_names:List[str]=None):
+    if names is None:
+        names = np.arange(len(train_logs))
+    if exclude_names is not None:
+        indexs = [i for i, name in enumerate(names) if name in exclude_names]
+        train_logs = [train_log for i, train_log in enumerate(train_logs) if i not in indexs]
+        names = [name for i, name in enumerate(names) if i not in indexs]
+    # atts = []
+    # if isinstance(train_logs[0][0],TrainLogHistory):
+    #     atts = TrainLogHistory.__dict__['__annotations__'].keys()
+    # elif isinstance(train_logs[0][0],EvalLogHistory):
+    #     atts = train_logs[0][0].get_keys()
+    plt.figure(facecolor='#8ff2a4',figsize=figsize)
+    for att_name in att_names:
+        # if att_name not in atts:
+        #     print("{} not in attribute of this object".format(att_name))
+        #     continue
+        for i, train_log in enumerate(train_logs):
+            if not train_log[0].check_key(att_name):
+                print("{} not in attribute of this log".format(att_name))
+                continue
+            data = np.array([log_data.get_score(att_name) for log_data in train_log])
+            epochs = np.array([log_data.epoch for log_data in train_log])
+            masked = epochs >= from_step
+            if to_step > 0:
+                masked = masked * (epochs <= to_step)
+            plt.plot(epochs[masked],data[masked],label='{}'.format(names[i]))
     plt.legend()
     plt.show()

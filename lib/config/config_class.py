@@ -1,10 +1,18 @@
 import os
 import json
 import typing
+from marshmallow.fields import Function, Number
 import numpy as np
 import pandas as pd
+from transformers.file_utils import ExplicitEnum
+from transformers import ElectraConfig
 from ..utils import general as g
 from multimethod import multimethod
+from dataclasses_json import dataclass_json
+from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Tuple
+from ..model.overwriter import OTrainingArguments
+from copy import deepcopy, copy
 
 
 class ManiConfig():
@@ -88,11 +96,14 @@ class VCFpageNLP:
         pass
 
     def get_file_path(self, output_prefix: str, file_type: str, region: int = 0, batch: int = 0) -> str:
-        assert file_type in self.file_types, 'type must be in this list [{}]'.format(', '.join(self.file_types))
-        return output_prefix+'.r{0:04d}.b{1:04d}'.format(region, batch) + self.tail.get(file_type)
+        assert file_type in self.file_types, 'type must be in this list [{}]'.format(
+            ', '.join(self.file_types))
+        path = output_prefix+'.r{0:04d}.b{1:04d}'.format(region, batch) + self.tail.get(file_type)
+        return os.path.abspath(path)
 
     def get_file_path_from_page(self, path: str, file_type: str, detail_name: str = '') -> str:
-        assert file_type in self.file_types, 'type must be in this list [{}]'.format(', '.join(self.file_types))
+        assert file_type in self.file_types, 'type must be in this list [{}]'.format(
+            ', '.join(self.file_types))
         assert path.endswith(self.tail[self.page]), "Must be page type data"
         if file_type == self.variant:
             temps = path.split('.')
@@ -101,14 +112,17 @@ class VCFpageNLP:
         return path.replace(self.tail[self.page], detail_name + self.tail[file_type])
 
     def get_file_paths(self, prefix: str, file_type: str, regions: typing.List[int], batchs: typing.List[int]) -> list:
-        assert file_type in self.file_types, 'type must be in this list [{}]'.format(', '.join(self.file_types))
-        region_file_paths = [[self.get_file_path(prefix,file_type,region,batch) for batch in batchs] for region in regions]
+        assert file_type in self.file_types, 'type must be in this list [{}]'.format(
+            ', '.join(self.file_types))
+        region_file_paths = [[self.get_file_path(
+            prefix, file_type, region, batch) for batch in batchs] for region in regions]
         return region_file_paths
-    
-    def get_file_paths_in_dir(self,dir:str,file_type:str):
-        assert file_type in self.file_types, 'type must be in this list [{}]'.format(', '.join(self.file_types))
+
+    def get_file_paths_in_dir(self, dir: str, file_type: str):
+        assert file_type in self.file_types, 'type must be in this list [{}]'.format(
+            ', '.join(self.file_types))
         assert os.path.isdir(dir), "{} not found!".format(dir)
-        return [os.path.join(dir,file_name) for file_name in os.listdir(dir) if file_name.endswith(page_config.tail[file_type])]
+        return [os.path.join(dir, file_name) for file_name in os.listdir(dir) if file_name.endswith(page_config.tail[file_type])]
 
     def token_masked_to_json(self, data: dict, path: str) -> None:
         with g.writing(path) as wjson:
@@ -269,3 +283,315 @@ class LegendConfig():
 
 
 legend_config = LegendConfig()
+
+
+class TrainModeType(ExplicitEnum):
+    NOPRETRAIN = "nopretrain"
+    PRETRAIN = "pretrain"
+
+
+class MaskedModeType(ExplicitEnum):
+    RANDOM = "random"
+    NORMAL = "normal"
+
+
+class DirType(ExplicitEnum):
+    OUTPUT = "output"
+    LOGGING = "logging"
+    CHECKPOINT = "checkpoint"
+
+
+@dataclass_json
+@dataclass
+class TrainElectraArguments:
+    regions: List[int] = field(
+        metadata={"help": "The region will be trained"}
+    )
+    batchs: List[int] = field(
+        metadata={"help": "The region's batchs will be trained"}
+    )
+    save_dir_format: str = field(
+        metadata={"help": "Save dir format path use to save data."}
+    )
+    vocab_file: str = field(
+        metadata={"help": "vocab file passing to tokenizer."}
+    )
+    file_train_prefix: str = field(
+        metadata={
+            "help": "the file train prefix passing to page_config.get_file_paths()"}
+    )
+    file_test_prefix: str = field(
+        metadata={
+            "help": "the file train prefix passing to page_config.get_file_paths()"}
+    )
+    output_dir_format: str = field(
+        metadata={
+            "help": "Output dir format path use to create output_dir in trainning args."}
+    )
+    logging_dir_format: str = field(
+        metadata={
+            "help": "logging dir format path use to create output_dir in logging args."}
+    )
+    train_args: dict = field(
+        metadata={"help": "the trainning arguments"}
+    )
+    model_args: dict = field(
+        metadata={"help": "the electra config"}
+    )
+    mode: TrainModeType = field(
+        default="nopretrain",
+        metadata={"help": "the training mode to run"}
+    )
+    model_name: str = field(
+        default="",
+        metadata={"help": "prefix will adding to output"}
+    )
+    masked_mode: MaskedModeType = field(
+        default=MaskedModeType.NORMAL,
+        metadata={
+            "help": "masked mode use to dataset param when it masked by flag is true"}
+    )
+    seed: int = field(
+        default=42,
+        metadata={"help": "seed use for train and orther"}
+    )
+    resume_from_checkpoint_format: str = field(
+        default=None,
+        metadata={
+            "help": "resume checkpoint format path which you will use for get checkpoint path"}
+    )
+    pretrain_path_format: str = field(
+        default=None,
+        metadata={
+            "help": "pretrain path format path which you will use for pretrain path"}
+    )
+
+    def get_vocab_file(self):
+        return os.path.abspath(self.vocab_file)
+        
+    def get_pretrain_path_format(self):
+        if self.pretrain_path_format is None:
+            return self.save_dir_format
+        else:
+            return self.pretrain_path_format
+
+    def get_trainning_args(self, func_format: Function):
+        trainning_args = deepcopy(self.train_args)
+        trainning_args['output_dir'] = func_format(
+            DirType.OUTPUT, self.output_dir_format)
+        trainning_args['logging_dir'] = func_format(
+            DirType.LOGGING, self.logging_dir_format)
+        trainning_args['seed'] = self.seed
+        return OTrainingArguments(**trainning_args)
+
+    def get_model_args(self):
+        model_args = deepcopy(self.model_args)
+        return ElectraConfig(**model_args)
+
+    def get_resume_from_checkpoint(self, func_format: Function):
+        resume_from_checkpoint = None
+        if self.resume_from_checkpoint_format is not None:
+            resume_from_checkpoint = func_format(
+                DirType.CHECKPOINT, self.resume_from_checkpoint_format)
+        return resume_from_checkpoint
+
+    def save_to_json(self, path):
+        with g.writing(path) as jf:
+            json.dump(self.to_dict(), jf)
+
+
+class TrainElectraConfig():
+    def __init__(self) -> None:
+        self.learning_rate = 'learning_rate'
+        self.loss = "loss"
+        self.epoch = "epoch"
+        self.eval_R2_score_SV = "eval_R2 score SV"
+        self.eval_R2_score_VS = "eval_R2 score VS"
+        self.eval_R2_score_pred = "eval_R2 score pred"
+        self.eval_R2_score_sum = "eval_R2 score sum"
+        self.eval_loss = "eval_loss"
+        self.log_history = "log_history"
+        self.history_file = "trainer_state.json"
+        pass
+
+    def get_history_data(self, checkpoint_dir: str, data_name: str):
+        paths = os.listdir(checkpoint_dir)
+        paths.sort()
+        latest_path = os.path.join(
+            checkpoint_dir, paths[-1], self.history_file)
+        data = []
+        with g.reading(latest_path) as hf:
+            log_historys = json.load(hf)[self.log_history]
+            data = [log_history[data_name]
+                    for log_history in log_historys if data_name in log_history]
+        return data
+
+    def load_from_json(self, path: str) -> TrainElectraArguments:
+        data = None
+        with g.reading(path) as jf:
+            data = json.load(jf)
+        assert data is not None, "data from json can't none"
+        return TrainElectraArguments.from_dict(data)
+
+    def get_func_format(self, region: int, detail: str) -> Function:
+        def func_format(type: DirType, path_format: str) -> str:
+            return path_format.format(region)+detail
+        return func_format
+
+
+train_electra_config = TrainElectraConfig()
+
+@dataclass_json
+@dataclass
+class ILogHistory:
+    epoch: float = field(
+        metadata={"help": "epoch log at"}
+    )
+    step: float = field(
+        metadata={"help": "step log at"}
+    )
+    def get_score(self,name:str):
+        pass
+
+    def check_key(self,key)->bool:
+        pass
+    
+    def is_this_class(data: dict)->bool:
+        "overwrite this"
+        pass
+
+@dataclass_json
+@dataclass
+class TrainLogHistory(ILogHistory):
+    learning_rate: float = field(
+        metadata={"help": "lr log at"}
+    )
+    loss: float = field(
+        metadata={"help": "loss log at"}
+    )
+    def check_key(self, key) -> bool:
+        return key in self.__dict__
+    
+    def get_score(self,name:str):
+        return self.__getattribute__(name)
+
+    def is_this_class(data: dict) -> bool:
+        if "learning_rate" in data:
+            return True
+        return False
+
+class EvalLogHistory(ILogHistory):
+    def __init__(self,data:dict) -> None:
+        self.epoch = data['epoch']
+        self.step = data["step"]
+        self.eval_loss = data["eval_loss"]
+        self.eval_runtime = data["eval_runtime"]
+        self.eval_samples_per_second = data["eval_samples_per_second"]
+        self.eval_steps_per_second = data["eval_steps_per_second"]
+        # overwrite data from IEvalMetrics
+        self.__eval_name = 'eval_{}'
+        self.__other_data = data
+    
+    def __check_data(self,key)->bool:
+        if key in self.__other_data:
+            return True
+        return False
+    
+    def get_keys(self)->List:
+        return self.__other_data.keys()
+
+    def check_key(self, key) -> bool:
+        return key in self.__other_data
+    
+    def get_score(self,name:str):
+        if self.__check_data(name):
+            return self.__other_data[name]
+        return None
+
+    def is_this_class(data: dict) -> bool:
+        if "eval_runtime" in data:
+            return True
+        return False
+
+@dataclass_json
+@dataclass
+class CheckpointLogConfig:
+    best_metric: float = field(
+        metadata={"help": "best metric"}
+    )
+    best_model_checkpoint: str = field(
+        metadata={"help": "best model checkpoint"}
+    )
+    epoch: float = field(
+        metadata={"help": "epoch"}
+    )
+    global_step: float = field(
+        metadata={"help": "global step"}
+    )
+    is_hyper_param_search: bool = field(
+        metadata={"help": "is hyper param search"}
+    )
+    is_local_process_zero: bool = field(
+        metadata={"help": "is local process zero"}
+    )
+    is_world_process_zero: bool = field(
+        metadata={"help": "is world process zero"}
+    )
+    log_history: List[dict] = field(
+        metadata={"help": "log history"}
+    )
+    def get_train_log(self):
+        data = [TrainLogHistory.from_dict(logh) for logh in self.log_history if TrainLogHistory.is_this_class(logh)]
+        return data
+    def get_eval_log(self):
+        data = [EvalLogHistory(logh) for logh in self.log_history if EvalLogHistory.is_this_class(logh)]
+        return data
+
+class CheckpointConfig:
+    def __init__(self) -> None:
+        self.log_data = 'trainer_state.json'
+        pass
+    
+    def get_checkpoint_name(self,step:Number)->str:
+        return 'checkpoint-{}'.format(step)
+
+    def get_last_checkpoint(self,checkpoint_dir:str)->str:
+        assert os.path.isdir(checkpoint_dir), "{} doesnt exist".format(checkpoint_dir)
+        checkpoints = os.listdir(checkpoint_dir)
+        checkpoints.sort(key=lambda x: int(x.split('-')[-1]))
+        last_checpoint = os.path.join(checkpoint_dir,checkpoints[-1])
+        return last_checpoint
+    
+    def get_checkpoint_data(self,checkpoint_dir:str,is_checpoint_dir:bool=True)->CheckpointLogConfig:
+        last_checpoint = self.get_last_checkpoint(checkpoint_dir)
+        if not is_checpoint_dir:
+            last_checpoint = checkpoint_dir
+        data_path = os.path.join(last_checpoint,self.log_data)
+        with g.reading(data_path) as cf:
+            data = json.load(cf)
+            return CheckpointLogConfig.from_dict(data)
+    
+    def get_best_model_from_checpoint(self,checkpoint_dir:str,key:str)->Tuple[str,EvalLogHistory]:
+        assert os.path.isdir(checkpoint_dir), "{} doesnt exist".format(checkpoint_dir)
+        data_log = self.get_checkpoint_data(checkpoint_dir)
+        eval_logs = data_log.get_eval_log()
+        scores = [eval_log.get_score(key) for eval_log in eval_logs]
+        scores = list(map(lambda x: -np.inf if np.isnan(x) else x,scores))
+        index = np.argmax(scores)
+        best_eval_log = eval_logs[index]
+        checkpoint_name = self.get_checkpoint_name(best_eval_log.step)
+        return os.path.join(checkpoint_dir,checkpoint_name), best_eval_log
+    
+    def get_best_score_each_cycle(self,checpoint_dir:str,key:str,nb_cycle:int)->List[EvalLogHistory]:
+        data_log = self.get_checkpoint_data(checpoint_dir)
+        eval_logs = data_log.get_eval_log()
+        data = [{'epoch': eval_log.epoch,'score':eval_log.get_score(key),'index': i} for i, eval_log in enumerate(eval_logs)]
+        data = pd.DataFrame(data)
+        nbdata_cycle = max(data['epoch'])/nb_cycle
+        data['cycle'] = data['epoch']//nbdata_cycle
+        idx = data.groupby(['cycle'])['score'].transform(max) == data['score']
+        maxdata = data[idx]
+        return list(np.array(eval_logs)[maxdata['index']])
+        pass
+
+cpconfig = CheckpointConfig()

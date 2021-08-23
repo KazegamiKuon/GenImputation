@@ -9,6 +9,11 @@ import subprocess
 import shutil
 import types
 
+def get_latest_checkpoint(checkpoints_dir:str)->str:
+    checkpoints = os.listdir(checkpoints_dir)
+    checkpoints.sort()
+    return os.path.join(checkpoints_dir,checkpoints[-1])
+
 def walk_forward(walker):
     return next(walker,False)
 

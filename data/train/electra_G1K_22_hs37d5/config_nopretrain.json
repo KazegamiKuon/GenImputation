@@ -1,8 +1,8 @@
 {
-    "mode":"pretrain",
+    "mode":"nopretrain",
     "regions":[1,2,3,4,5,6,7,8,9,10,11,12],
     "batchs":[0,1,2,3,4,5,6,7,8],
-    "model_name":"",
+    "model_name":"_nopretrain",
     "save_dir":"/client/user1/cuongdev/GenImputation/data/train/electra_G1K_22_hs37d5/data_dir/model/region{:04d}",
     "vocab_file":"/client/user1/cuongdev/GenImputation/data/train/electra_G1K_22_hs37d5/data_dir/vocab.txt",
     "file_train_prefix":"/client/user1/cuongdev/GenImputation/data/train/electra_G1K_22_hs37d5/corpus_dir/G1K_22_hs37d5_biallelic_train",
@@ -19,7 +19,7 @@
         "save_total_limit":1,
         "learning_rate": 0.0005,
         "weight_decay": 0.01,
-        "num_train_epochs": 120,
+        "num_train_epochs": 160,
         "no_cuda": false,
         "seed": 42,
         "run_name": "cuongdev_electra",
@@ -27,7 +27,7 @@
         "per_device_eval_batch_size": 32,
         "load_best_model_at_end": true,
         "warmup_steps": 32,
-        "num_cycles":3,
+        "num_cycles":4,
         "metric_for_best_model":"R2 score VS"
     },
     "model_args": {
